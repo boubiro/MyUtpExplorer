@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:id="@+id/createFolder"
+        android:icon="@drawable/create_folder"
+        android:title="@string/menu_create_folder"
+        app:showAsAction="ifRoom" />
+
+    <item
+        android:id="@+id/reload"
+        android:icon="@drawable/reload"
+        android:title="@string/menu_reload"
+        app:showAsAction="ifRoom" />
+
+    <item
+        android:id="@+id/settings"
+        android:icon="@drawable/settings"
+        android:title="@string/menu_settings"
+        app:showAsAction="always" />
+
+    <item
+        android:id="@+id/media_route_menu_item"
+        app:actionProviderClass="androidx.mediarouter.app.MediaRouteActionProvider"
+        app:showAsAction="always" />
+
+
+</menu>
