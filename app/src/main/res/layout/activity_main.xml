@@ -37,7 +37,8 @@
         android:layout_width="match_parent"
         android:layout_height="64dp"
         android:layout_marginTop="-64dp"
-        android:background="@color/cast_intro_overlay_background_color">
+        android:background="@color/cast_intro_overlay_background_color"
+        android:visibility="gone">
 
         <TextView
             android:id="@+id/tvCutElement"

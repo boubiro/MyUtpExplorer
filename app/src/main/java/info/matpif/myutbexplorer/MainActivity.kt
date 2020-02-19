@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.net.Uri
 import android.os.Bundle
+import android.text.TextUtils
 import android.view.*
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
@@ -14,15 +15,21 @@ import androidx.preference.PreferenceManager
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.engine.DiskCacheStrategy
+import com.google.android.gms.cast.MediaInfo
+import com.google.android.gms.cast.MediaMetadata
+import com.google.android.gms.common.images.WebImage
 import com.google.gson.Gson
+import info.matpif.myutbexplorer.adapters.ListFavorite
 import info.matpif.myutbexplorer.adapters.ListItemFoldersFiles
+import info.matpif.myutbexplorer.entities.UtbAttributes
+import info.matpif.myutbexplorer.entities.databases.AppDatabase
+import info.matpif.myutbexplorer.listeners.MyFavoriteListener
 import info.matpif.myutbexplorer.models.UtbFile
 import info.matpif.myutbexplorer.models.UtbFolder
 import info.matpif.myutbexplorer.models.UtbModel
 import info.matpif.myutbexplorer.services.Uptobox
 import pl.droidsonroids.casty.Casty
 import pl.droidsonroids.casty.MediaData
-import kotlin.collections.ArrayList
 
 
 class MainActivity : AppCompatActivity() {
@@ -36,11 +43,11 @@ class MainActivity : AppCompatActivity() {
     private var casty: Casty? = null
     private var cutElement: ConstraintLayout? = null
     private var btnPaste: ImageButton? = null
-    private var cancel_paste: ImageButton? = null
+    private var cancelPaste: ImageButton? = null
     private var tvCutElement: TextView? = null
+    private var alertDialog: AlertDialog? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
-
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -52,7 +59,7 @@ class MainActivity : AppCompatActivity() {
         this.breadcrumbTv = findViewById(R.id.breadcrumb)
         this.cutElement = findViewById(R.id.cutElement)
         this.btnPaste = findViewById(R.id.paste)
-        this.cancel_paste = findViewById(R.id.cancel_paste)
+        this.cancelPaste = findViewById(R.id.cancel_paste)
         this.tvCutElement = findViewById(R.id.tvCutElement)
 
         val pullToRefresh: SwipeRefreshLayout = findViewById(R.id.pullToRefresh)
@@ -76,7 +83,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        this.cancel_paste?.setOnClickListener {
+        this.cancelPaste?.setOnClickListener {
             this.adapter?.removeAllSelectedItem()
             this.adapter?.setSelectedItemToPaste()
             this.invalidateOptionsMenu()
@@ -247,12 +254,111 @@ class MainActivity : AppCompatActivity() {
                         this.breadcrumbTv?.text = "//"
                     }
                 }
-                
+
                 val list = listFolder + listFile
 
                 if (this.adapter == null) {
                     this.runOnUiThread {
                         this.adapter = ListItemFoldersFiles(list.toCollection(ArrayList()), this)
+                        this.adapter?.setOnMyFavoriteListener(object : MyFavoriteListener {
+                            override fun onChange(position: Int, favorite: Boolean) {
+                                val item: UtbModel =
+                                    this@MainActivity.adapter?.getItem(position) as UtbModel
+
+                                if (favorite) {
+                                    val builder = AlertDialog.Builder(this@MainActivity)
+                                    builder.setTitle(R.string.create_favorite)
+                                    val mView = this@MainActivity.layoutInflater.inflate(
+                                        R.layout.dialog_edit_favorite,
+                                        null
+                                    )
+
+                                    val etName: EditText = mView.findViewById(R.id.etName)
+
+                                    var utbAttributes = item.getUtbAttributes()
+                                    if (utbAttributes != null) {
+                                        etName.setText(utbAttributes.name)
+                                    } else {
+                                        etName.setText(item.toString())
+                                    }
+
+                                    builder.setView(mView)
+                                    builder.setPositiveButton(
+                                        R.string.dialog_ok
+                                    ) { dialog, id ->
+
+                                        if (item is UtbFolder) {
+                                            if (utbAttributes == null) {
+                                                utbAttributes = UtbAttributes(
+                                                    0,
+                                                    1,
+                                                    item.fld_id,
+                                                    etName.text.toString(),
+                                                    true,
+                                                    false,
+                                                    Gson().toJson(item.getData())
+                                                )
+                                            } else {
+                                                utbAttributes!!.isFavorite = favorite
+                                                utbAttributes!!.utbModel =
+                                                    Gson().toJson(item.getData())
+
+                                            }
+                                            Thread(Runnable {
+                                                AppDatabase.getDatabase(this@MainActivity)
+                                                    .utbAttributeDao()
+                                                    .insert(utbAttributes!!)
+                                            }).start()
+
+                                            item.setUtbAttributes(utbAttributes)
+                                        } else if (item is UtbFile) {
+                                            if (utbAttributes == null) {
+                                                utbAttributes = UtbAttributes(
+                                                    0,
+                                                    2,
+                                                    item.file_code,
+                                                    etName.text.toString(),
+                                                    true,
+                                                    false,
+                                                    Gson().toJson(item.getData())
+                                                )
+                                            } else {
+                                                utbAttributes!!.isFavorite = favorite
+                                                utbAttributes!!.utbModel =
+                                                    Gson().toJson(item.getData())
+
+                                            }
+                                            Thread(Runnable {
+                                                AppDatabase.getDatabase(this@MainActivity)
+                                                    .utbAttributeDao()
+                                                    .insert(utbAttributes!!)
+                                            }).start()
+                                        }
+                                    }
+
+                                    builder.create().show()
+                                } else {
+                                    val utbAttributes = item.getUtbAttributes()
+                                    if (utbAttributes != null) {
+                                        utbAttributes.isFavorite = false
+
+                                        if (item is UtbFolder) {
+                                            utbAttributes.utbModel = Gson().toJson(item.getData())
+
+                                        } else if (item is UtbFile) {
+                                            utbAttributes.utbModel = Gson().toJson(item.getData())
+                                        }
+
+                                        Thread(Runnable {
+                                            AppDatabase.getDatabase(this@MainActivity)
+                                                .utbAttributeDao()
+                                                .insert(utbAttributes)
+                                        }).start()
+
+                                    }
+                                }
+                            }
+                        })
                         this.listFoldersFiles!!.adapter = adapter
                     }
                 } else {
@@ -475,15 +581,28 @@ class MainActivity : AppCompatActivity() {
                         } else {
                             this.uptobox!!.getThumbUrl(file) { url ->
                                 this.runOnUiThread {
-                                    val mediaData: MediaData = MediaData.Builder(streamLink?.url)
+
+                                    val mediaMetadata =
+                                        MediaMetadata(MediaData.MEDIA_TYPE_MOVIE)
+
+                                    if (!TextUtils.isEmpty(file.file_name)) mediaMetadata.putString(
+                                        MediaMetadata.KEY_TITLE,
+                                        file.file_name
+                                    )
+                                    if (!TextUtils.isEmpty(file.file_descr)) mediaMetadata.putString(
+                                        MediaMetadata.KEY_SUBTITLE,
+                                        file.file_descr
+                                    )
+
+                                    mediaMetadata.addImage(WebImage(Uri.parse(url)))
+
+                                    val mediaInfo: MediaInfo = MediaInfo.Builder(streamLink?.url)
                                         .setStreamType(MediaData.STREAM_TYPE_BUFFERED)
                                         .setContentType("videos/mp4")
-                                        .setMediaType(MediaData.MEDIA_TYPE_MOVIE)
-                                        .setTitle(file.file_name)
-                                        .setSubtitle(file.file_descr)
-                                        .addPhotoUrl(url)
+                                        .setMetadata(mediaMetadata)
                                         .build()
-                                    casty?.player?.loadMediaAndPlay(mediaData)
+
+                                    casty?.player?.loadMediaAndPlay(mediaInfo, true, 0)
                                 }
                             }
                         }
@@ -537,6 +656,72 @@ class MainActivity : AppCompatActivity() {
             R.id.settings -> {
                 val intent = Intent(this, SettingsActivity::class.java)
                 startActivity(intent)
+                true
+            }
+            R.id.favorite -> {
+                val db = AppDatabase.getDatabase(this)
+
+                Thread(Runnable {
+                    val adapterDialog =
+                        ListFavorite(
+                            db.utbAttributeDao().getFavorite().toCollection(ArrayList()),
+                            this
+                        )
+
+                    val builder = AlertDialog.Builder(this)
+                    builder.setTitle(R.string.menu_favorite)
+
+                    val rowList: View = layoutInflater.inflate(R.layout.dialog_list_favorite, null)
+                    val listView: ListView = rowList.findViewById(R.id.lv_favorite)
+                    listView.adapter = adapterDialog
+
+                    listView.onItemClickListener =
+                        AdapterView.OnItemClickListener { parent, view, position, id ->
+                            val selectedItem: UtbAttributes =
+                                parent.getItemAtPosition(position) as UtbAttributes
+
+                            val utb: Any
+                            if (selectedItem.type == 1) {
+                                utb = UtbFolder()
+                                utb.pushData(
+                                    Gson().fromJson(
+                                        selectedItem.utbModel,
+                                        UtbFolder.DataUtbFolder::class.java
+                                    )
+                                )
+                            } else {
+                                utb = UtbFile()
+                                utb.pushData(
+                                    Gson().fromJson(
+                                        selectedItem.utbModel,
+                                        UtbFile.DataUtbFile::class.java
+                                    )
+                                )
+                            }
+
+                            if (utb is UtbFolder) {
+                                this.reload(utb.fullPath)
+                            } else if (utb is UtbFile) {
+                                if (utb.transcoded != "null") {
+                                    this.showAvailableFiles(utb.file_code, utb)
+                                }
+                            }
+
+                            this.alertDialog?.dismiss()
+                        }
+
+                    adapterDialog.notifyDataSetChanged()
+
+                    builder.setView(rowList)
+                    builder.setNegativeButton(R.string.dialog_cancel) { dialog, id ->
+
+                    }
+
+                    this.runOnUiThread {
+                        this.alertDialog = builder.create()
+                        this.alertDialog?.show()
+                    }
+                }).start()
                 true
             }
             R.id.createFolder -> {

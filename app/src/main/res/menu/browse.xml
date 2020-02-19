@@ -3,6 +3,12 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <item
+        android:id="@+id/favorite"
+        android:icon="@drawable/ic_action_favorite"
+        android:title="@string/menu_favorite"
+        app:showAsAction="ifRoom" />
+
+    <item
         android:id="@+id/createFolder"
         android:icon="@drawable/create_folder"
         android:title="@string/menu_create_folder"
@@ -10,18 +16,19 @@
 
     <item
         android:id="@+id/reload"
-        android:icon="@drawable/reload"
+        android:icon="@drawable/ic_action_refresh"
         android:title="@string/menu_reload"
         app:showAsAction="ifRoom" />
 
     <item
         android:id="@+id/settings"
-        android:icon="@drawable/settings"
+        android:icon="@drawable/ic_action_settings"
         android:title="@string/menu_settings"
         app:showAsAction="always" />
 
     <item
         android:id="@+id/media_route_menu_item"
+        android:title="@string/menu_cast"
         app:actionProviderClass="androidx.mediarouter.app.MediaRouteActionProvider"
         app:showAsAction="always" />
 

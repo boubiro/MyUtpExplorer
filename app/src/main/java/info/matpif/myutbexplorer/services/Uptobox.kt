@@ -1,10 +1,13 @@
 package info.matpif.myutbexplorer.services
 
 import android.content.Context
+import androidx.room.Room
+import info.matpif.myutbexplorer.entities.databases.AppDatabase
 import info.matpif.myutbexplorer.models.*
 import info.matpif.myutbexplorer.services.data.*
 import org.json.JSONObject
 import org.jsoup.Jsoup
+import java.net.URL
 
 
 class Uptobox(_token: String, _context: Context) {
@@ -24,6 +27,8 @@ class Uptobox(_token: String, _context: Context) {
         Request(
             SCHEMA, HOST, URL_API_PATH
         )
+
+    private val db = AppDatabase.getDatabase(_context)
 
     fun getUser(listener: (UtbUser) -> Unit) {
         request.getRequest(
@@ -73,6 +78,7 @@ class Uptobox(_token: String, _context: Context) {
             }
 
             utbCurrentFolder.currentFolder = utbFolder
+            var utbAttributeDao = db.utbAttributeDao()
 
             if (foldersResponse != null) {
                 utbCurrentFolder.folders = Array(foldersResponse.length()) { UtbFolder() }
@@ -87,6 +93,7 @@ class Uptobox(_token: String, _context: Context) {
                     utbF.fullPath = item.getString("fullPath")
                     utbF.name = item.getString("name")
                     utbF.hash = item.getString("hash")
+                    utbF.setUtbAttributes(utbAttributeDao.findByCode(utbF.fld_id!!))
                     utbCurrentFolder.folders!![i] = utbF
                 }
             }
@@ -109,6 +116,7 @@ class Uptobox(_token: String, _context: Context) {
                     utbF.last_stream = item.getString("last_stream")
                     utbF.nb_stream = item.getInt("nb_stream")
                     utbF.transcoded = item.getString("transcoded")
+                    utbF.setUtbAttributes(utbAttributeDao.findByCode(utbF.file_code!!))
                     utbCurrentFolder.files!![i] = utbF
                 }
             }
@@ -245,9 +253,13 @@ class Uptobox(_token: String, _context: Context) {
             "/streaming", listOf("token" to this.token, "file_code" to file_code)
         ) { utbResponse ->
             val utbStreamLinks = UtbStreamLinks()
-            var count: Int = 0
+            var count = 0
             val streamLinks = JSONObject(utbResponse.data?.getString("streamLinks"))
             var keys = streamLinks.keys()
+            var host = ""
+
+            utbStreamLinks.assetId = utbResponse.data?.getString("assetId")
+            utbStreamLinks.duration = utbResponse.data?.getInt("duration")
 
             while (keys.hasNext()) {
                 val key = keys.next()
@@ -296,11 +308,16 @@ class Uptobox(_token: String, _context: Context) {
                         utbStreamLink.resolution = key
                         utbStreamLink.url = url
 
+                        if (count == 1) {
+                            host = URL(url).host
+                        }
+
                         utbStreamLinks.streamLinks!![count] = utbStreamLink
                         count++
                     }
                 }
 
+                utbStreamLinks.host = host
                 listener.invoke(utbStreamLinks)
             }
         }
@@ -382,13 +399,13 @@ class Uptobox(_token: String, _context: Context) {
 
     fun getThumbUrl(videoFile: UtbFile?, listener: (String?) -> Unit) {
         if (videoFile != null) {
-            Thread(Runnable {
-                val doc = Jsoup.connect("$URL_BASE_STREAM/" + videoFile.file_code).get()
-                val url =
-                    "https[a-z:\\/0-9\\.]*\\.uptostream\\.com\\/thumbnail\\/[a-z:\\/0-9\\.]*_preview\\.jpg".toRegex()
-                        .find(doc.html())?.value
-                listener.invoke(url)
-            }).start()
+            videoFile.file_code?.let { fileCode ->
+                this.getListAvailableFile(fileCode) { utbStreamLinks ->
+                    val url =
+                        "$SCHEMA://" + utbStreamLinks.host + "/thumbnail/" + utbStreamLinks.assetId + "_preview.jpg"
+                    listener.invoke(url)
+                }
+            }
         }
     }
 }

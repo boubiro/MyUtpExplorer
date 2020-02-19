@@ -32,12 +32,4 @@
         android:layout_height="wrap_content"
         android:padding="16dp" />
 
-    <info.matpif.myutbexplorer.views.MyMaterialFavoriteButton
-        android:id="@+id/favoriteButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="-50dp"
-        app:mfb_color="black"
-        app:mfb_type="star" />
-
 </LinearLayout>

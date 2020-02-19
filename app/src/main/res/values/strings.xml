@@ -11,6 +11,8 @@
     <string name="menu_paste">Paste</string>
     <string name="menu_reload">Reload</string>
     <string name="menu_create_folder">Create folder</string>
+    <string name="menu_favorite">Favorite</string>
+    <string name="menu_cast">Cast</string>
 
     <!-- Menu Selection -->
     <string name="menu_cut">Cut</string>
@@ -23,6 +25,7 @@
     <string name="edit_file">Edit File</string>
     <string name="edit_folder">Edit Folder</string>
     <string name="create_folder">Create Folder</string>
+    <string name="create_favorite">Create Favorite</string>
     <string name="edit_file_description">Description</string>
     <string name="edit_file_password">Password</string>
     <string name="edit_file_name">Name</string>

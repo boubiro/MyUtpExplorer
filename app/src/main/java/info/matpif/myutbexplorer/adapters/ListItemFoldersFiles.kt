@@ -8,10 +8,13 @@ import android.widget.ArrayAdapter
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.collection.ArrayMap
+import com.github.ivbaranov.mfb.MaterialFavoriteButton
 import info.matpif.myutbexplorer.R
+import info.matpif.myutbexplorer.listeners.MyFavoriteListener
 import info.matpif.myutbexplorer.models.UtbFile
 import info.matpif.myutbexplorer.models.UtbFolder
 import info.matpif.myutbexplorer.models.UtbModel
+import info.matpif.myutbexplorer.views.MyMaterialFavoriteButton
 
 class ListItemFoldersFiles(items: ArrayList<Any>, ctx: Context) :
     ArrayAdapter<Any>(ctx, R.layout.list_item_folders_files, items) {
@@ -21,10 +24,12 @@ class ListItemFoldersFiles(items: ArrayList<Any>, ctx: Context) :
         internal var imgFolder: ImageView? = null
         internal var imgFileMovie: ImageView? = null
         internal var imgFile: ImageView? = null
+        internal var favoriteButton: MyMaterialFavoriteButton? = null
     }
 
     private var selectedItem: ArrayMap<Int, Boolean> = ArrayMap()
     private var selectedItemToPaste: Array<UtbModel>? = null
+    private var myFavoriteListener: MyFavoriteListener? = null
 
     override fun getView(i: Int, view: View?, viewGroup: ViewGroup): View {
         var view = view
@@ -40,6 +45,17 @@ class ListItemFoldersFiles(items: ArrayList<Any>, ctx: Context) :
             viewHolder.imgFolder = view.findViewById<View>(R.id.imgFolder) as ImageView
             viewHolder.imgFileMovie = view.findViewById<View>(R.id.imgFileMovie) as ImageView
             viewHolder.imgFile = view.findViewById<View>(R.id.imgFile) as ImageView
+            viewHolder.favoriteButton =
+                view.findViewById<View>(R.id.favoriteButton) as MyMaterialFavoriteButton
+
+            viewHolder.favoriteButton?.tag = i
+
+            viewHolder.favoriteButton?.setOnFavoriteChangeListener { buttonView, favorite ->
+                if (viewHolder.favoriteButton?.isListenerable!!) {
+                    this.myFavoriteListener?.onChange(buttonView.tag as Int, favorite)
+                }
+            }
+
         } else {
             viewHolder = view.tag as AttractionItemViewHolder
         }
@@ -82,6 +98,12 @@ class ListItemFoldersFiles(items: ArrayList<Any>, ctx: Context) :
             }
             else -> viewHolder.name!!.text = ""
         }
+
+        viewHolder.favoriteButton?.isListenerable = false
+        val item: UtbModel = getItem(i) as UtbModel
+        viewHolder.favoriteButton?.isFavorite =
+            item.getUtbAttributes() != null && item.getUtbAttributes()?.isFavorite!!
+        viewHolder.favoriteButton?.isListenerable = true
 
         view.tag = viewHolder
 
@@ -148,5 +170,9 @@ class ListItemFoldersFiles(items: ArrayList<Any>, ctx: Context) :
 
     fun getSelectedItemToPaste(): Array<UtbModel>? {
         return this.selectedItemToPaste
+    }
+
+    fun setOnMyFavoriteListener(listener: MyFavoriteListener) {
+        this.myFavoriteListener = listener
     }
 }
