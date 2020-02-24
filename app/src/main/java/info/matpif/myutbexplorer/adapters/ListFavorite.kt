@@ -4,12 +4,11 @@ import android.content.Context
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ArrayAdapter
-import android.widget.ImageView
-import android.widget.TextView
+import android.widget.*
 import com.google.gson.Gson
 import info.matpif.myutbexplorer.R
 import info.matpif.myutbexplorer.entities.UtbAttributes
+import info.matpif.myutbexplorer.listeners.MyFavoriteListener
 import info.matpif.myutbexplorer.models.UtbFile
 import info.matpif.myutbexplorer.models.UtbFolder
 
@@ -21,7 +20,10 @@ class ListFavorite(items: ArrayList<Any>, ctx: Context) :
         internal var imgFolder: ImageView? = null
         internal var imgFileMovie: ImageView? = null
         internal var imgFile: ImageView? = null
+        internal var removeFavorite: ImageButton? = null
     }
+
+    private var myFavoriteListener: MyFavoriteListener? = null
 
     override fun getView(i: Int, view: View?, viewGroup: ViewGroup): View {
         var view = view
@@ -37,6 +39,12 @@ class ListFavorite(items: ArrayList<Any>, ctx: Context) :
             viewHolder.imgFolder = view.findViewById<View>(R.id.imgFolder) as ImageView
             viewHolder.imgFileMovie = view.findViewById<View>(R.id.imgFileMovie) as ImageView
             viewHolder.imgFile = view.findViewById<View>(R.id.imgFile) as ImageView
+            viewHolder.removeFavorite = view.findViewById<View>(R.id.removeFavorite) as ImageButton
+
+            viewHolder.removeFavorite?.tag = i
+            viewHolder.removeFavorite?.setOnClickListener {
+                this.myFavoriteListener?.onChange(it.tag as Int, false)
+            }
 
         } else {
             viewHolder = view.tag as AttractionItemViewHolder
@@ -81,5 +89,9 @@ class ListFavorite(items: ArrayList<Any>, ctx: Context) :
         view.tag = viewHolder
 
         return view
+    }
+
+    fun setOnMyFavoriteListener(listener: MyFavoriteListener) {
+        this.myFavoriteListener = listener
     }
 }

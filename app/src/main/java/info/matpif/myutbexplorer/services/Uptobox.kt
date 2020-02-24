@@ -1,13 +1,14 @@
 package info.matpif.myutbexplorer.services
 
 import android.content.Context
-import androidx.room.Room
+import android.util.Log
 import info.matpif.myutbexplorer.entities.databases.AppDatabase
 import info.matpif.myutbexplorer.models.*
 import info.matpif.myutbexplorer.services.data.*
 import org.json.JSONObject
 import org.jsoup.Jsoup
 import java.net.URL
+import java.util.concurrent.CountDownLatch
 
 
 class Uptobox(_token: String, _context: Context) {
@@ -48,7 +49,7 @@ class Uptobox(_token: String, _context: Context) {
         }
     }
 
-    fun getFiles(path: String, listener: (UtbCurrentFolder) -> Unit) {
+    fun getFiles(path: String, listener: (UtbCurrentFolder?) -> Unit) {
         request.getRequest(
             "/user/files",
             listOf(
@@ -60,68 +61,72 @@ class Uptobox(_token: String, _context: Context) {
             )
         ) { utbResponse ->
 
-            val currentFolderResponse = JSONObject(utbResponse.data?.getString("currentFolder"))
-            val foldersResponse = utbResponse.data?.getJSONArray("folders")
-            val filesResponse = utbResponse.data?.getJSONArray("files")
+            if (utbResponse.statusCode == 0) {
+                val currentFolderResponse = JSONObject(utbResponse.data?.getString("currentFolder"))
+                val foldersResponse = utbResponse.data?.getJSONArray("folders")
+                val filesResponse = utbResponse.data?.getJSONArray("files")
 
-            val utbCurrentFolder = UtbCurrentFolder()
-            val utbFolder = UtbFolder()
-            utbFolder.fileCount = currentFolderResponse.getInt("fileCount")
-            utbFolder.fld_id = currentFolderResponse.getString("fld_id")
-            utbFolder.hash = currentFolderResponse.getString("hash")
-            utbFolder.totalFileSize = currentFolderResponse.getString("totalFileSize")
+                val utbCurrentFolder = UtbCurrentFolder()
+                val utbFolder = UtbFolder()
+                utbFolder.fileCount = currentFolderResponse.getInt("fileCount")
+                utbFolder.fld_id = currentFolderResponse.getString("fld_id")
+                utbFolder.hash = currentFolderResponse.getString("hash")
+                utbFolder.totalFileSize = currentFolderResponse.getString("totalFileSize")
 
-            if (!utbFolder.fld_id.equals("0")) {
-                utbFolder.fld_name = currentFolderResponse.getString("fld_name")
-                utbFolder.fld_parent_id = currentFolderResponse.getString("fld_parent_id")
-                utbFolder.name = currentFolderResponse.getString("name")
-            }
-
-            utbCurrentFolder.currentFolder = utbFolder
-            var utbAttributeDao = db.utbAttributeDao()
-
-            if (foldersResponse != null) {
-                utbCurrentFolder.folders = Array(foldersResponse.length()) { UtbFolder() }
-                for (i in 0 until foldersResponse.length()) {
-                    val item = foldersResponse.getJSONObject(i)
-
-                    val utbF = UtbFolder()
-                    utbF.fld_id = item.getString("fld_id")
-                    utbF.fld_descr = item.getString("fld_descr")
-                    utbF.fld_name = item.getString("fld_name")
-                    utbF.fld_password = item.getString("fld_password")
-                    utbF.fullPath = item.getString("fullPath")
-                    utbF.name = item.getString("name")
-                    utbF.hash = item.getString("hash")
-                    utbF.setUtbAttributes(utbAttributeDao.findByCode(utbF.fld_id!!))
-                    utbCurrentFolder.folders!![i] = utbF
+                if (!utbFolder.fld_id.equals("0")) {
+                    utbFolder.fld_name = currentFolderResponse.getString("fld_name")
+                    utbFolder.fld_parent_id = currentFolderResponse.getString("fld_parent_id")
+                    utbFolder.name = currentFolderResponse.getString("name")
                 }
-            }
 
-            if (filesResponse != null) {
-                utbCurrentFolder.files = Array(filesResponse.length()) { UtbFile() }
-                for (i in 0 until filesResponse.length()) {
-                    val item = filesResponse.getJSONObject(i)
+                utbCurrentFolder.currentFolder = utbFolder
+                val utbAttributeDao = db.utbAttributeDao()
 
-                    val utbF = UtbFile()
-                    utbF.file_code = item.getString("file_code")
-                    utbF.file_created = item.getString("file_created")
-                    utbF.file_descr = item.getString("file_descr")
-                    utbF.file_downloads = item.getInt("file_downloads")
-                    utbF.file_last_download = item.getString("file_last_download")
-                    utbF.file_name = item.getString("file_name")
-                    utbF.file_password = item.getString("file_password")
-                    utbF.file_public = (item.getInt("file_public") == 1)
-                    utbF.file_size = item.getInt("file_size")
-                    utbF.last_stream = item.getString("last_stream")
-                    utbF.nb_stream = item.getInt("nb_stream")
-                    utbF.transcoded = item.getString("transcoded")
-                    utbF.setUtbAttributes(utbAttributeDao.findByCode(utbF.file_code!!))
-                    utbCurrentFolder.files!![i] = utbF
+                if (foldersResponse != null) {
+                    utbCurrentFolder.folders = Array(foldersResponse.length()) { UtbFolder() }
+                    for (i in 0 until foldersResponse.length()) {
+                        val item = foldersResponse.getJSONObject(i)
+
+                        val utbF = UtbFolder()
+                        utbF.fld_id = item.getString("fld_id")
+                        utbF.fld_descr = item.getString("fld_descr")
+                        utbF.fld_name = item.getString("fld_name")
+                        utbF.fld_password = item.getString("fld_password")
+                        utbF.fullPath = item.getString("fullPath")
+                        utbF.name = item.getString("name")
+                        utbF.hash = item.getString("hash")
+                        utbF.setUtbAttributes(utbAttributeDao.findByCode(utbF.fld_id!!))
+                        utbCurrentFolder.folders!![i] = utbF
+                    }
                 }
-            }
 
-            listener.invoke(utbCurrentFolder)
+                if (filesResponse != null) {
+                    utbCurrentFolder.files = Array(filesResponse.length()) { UtbFile() }
+                    for (i in 0 until filesResponse.length()) {
+                        val item = filesResponse.getJSONObject(i)
+
+                        val utbF = UtbFile()
+                        utbF.file_code = item.getString("file_code")
+                        utbF.file_created = item.getString("file_created")
+                        utbF.file_descr = item.getString("file_descr")
+                        utbF.file_downloads = item.getInt("file_downloads")
+                        utbF.file_last_download = item.getString("file_last_download")
+                        utbF.file_name = item.getString("file_name")
+                        utbF.file_password = item.getString("file_password")
+                        utbF.file_public = (item.getInt("file_public") == 1)
+                        utbF.file_size = item.getInt("file_size")
+                        utbF.last_stream = item.getString("last_stream")
+                        utbF.nb_stream = item.getInt("nb_stream")
+                        utbF.transcoded = item.getString("transcoded")
+                        utbF.setUtbAttributes(utbAttributeDao.findByCode(utbF.file_code!!))
+                        utbCurrentFolder.files!![i] = utbF
+                    }
+                }
+
+                listener.invoke(utbCurrentFolder)
+            } else {
+                listener.invoke(null)
+            }
         }
     }
 
@@ -160,62 +165,83 @@ class Uptobox(_token: String, _context: Context) {
     }
 
     fun moveFilesFolders(
-        model: Array<UtbModel>,
+        models: Array<UtbModel>,
         destination: UtbFolder,
-        listener: (Boolean) -> Unit
+        finish: (Boolean) -> Unit,
+        errorMoveFolders: (String) -> Unit,
+        errorMoveFiles: (String) -> Unit
     ) {
+
+        val latch = CountDownLatch(models.size)
+
         val files: Array<UtbFile>
         var i = 0
-        model.forEach {
-            if (it is UtbFolder) {
-                this.moveFolder(it, destination) { }
-            } else if (it is UtbFile) {
+        models.forEach { model ->
+            if (model is UtbFolder) {
+                this.moveFolder(model, destination) { isMoved ->
+                    if (!isMoved) {
+                        errorMoveFolders.invoke("Error when move folder")
+                    }
+                    latch.countDown()
+                }
+            } else if (model is UtbFile) {
                 i++
             }
         }
 
         files = Array(i) { UtbFile() }
         i = 0
-        model.forEach {
-            if (it is UtbFile) {
-                files[i] = it
+        models.forEach { model ->
+            if (model is UtbFile) {
+                files[i] = model
+                i++
             }
         }
 
-        this.moveFiles(files, destination) {
+        this.moveFiles(files, destination) { isUpdated, message ->
+            if (!isUpdated) {
+                errorMoveFiles.invoke(message)
+            }
 
+            files.forEach {
+                latch.countDown()
+            }
         }
 
-        listener.invoke(true)
+        latch.await()
+        finish.invoke(true)
     }
 
     fun moveFiles(
         files: Array<UtbFile>,
         destination: UtbFolder,
-        listener: (Boolean) -> Unit
+        listener: (Boolean, String) -> Unit
     ) {
-        var file_codes: String = ""
+        var fileCodes = ""
         files.forEach {
-            file_codes += it.file_code + ","
+            fileCodes += it.file_code + ","
         }
-        file_codes = file_codes.dropLast(1)
+        fileCodes = fileCodes.dropLast(1)
         request.patchRequest(
             "/user/files",
             MoveCopyFiles(
                 this.token,
-                file_codes,
+                fileCodes,
                 destination.fld_id,
                 "move"
             )
         ) {
-            listener.invoke((files.count() == it.data?.getInt("updated")))
+            listener.invoke(
+                (files.count() == it.data?.getInt("updated")),
+                it.message!!
+            )
         }
     }
 
     fun moveFolder(
         folder: UtbFolder,
         destination: UtbFolder,
-        listener: () -> Unit
+        listener: (Boolean) -> Unit
     ) {
         request.patchRequest(
             "/user/files",
@@ -226,7 +252,7 @@ class Uptobox(_token: String, _context: Context) {
                 "move"
             )
         ) {
-            listener.invoke()
+            listener.invoke(true)
         }
     }
 
@@ -383,6 +409,35 @@ class Uptobox(_token: String, _context: Context) {
         ) {
             listener.invoke(true)
         }
+    }
+
+    fun getSubTitles(videoFile: UtbFile, listener: (Array<UtbSubTitle>?) -> Unit) {
+
+        Thread(Runnable {
+            val doc = Jsoup.connect("$URL_BASE_STREAM/" + videoFile.file_code).get()
+            val matchResults =
+                "<track type=[\\'\"].+?[\\'\"] kind=[\\'\"]subtitles[\\'\"] src=[\\'\"](([^\\'\"]+).vtt)[\\'\"] srclang=[\\'\"].+?[\\'\"] label=[\\'\"]([^\\'\"]+)[\\'\"]>".toRegex()
+                    .findAll(doc.html())
+
+            if (matchResults.count() > 0) {
+                val utbSubTitles = Array(matchResults.count()) { UtbSubTitle() }
+                var i = 0
+
+                matchResults.forEach { mathcResult ->
+                    val utbSubTitle = UtbSubTitle()
+                    utbSubTitle.link = mathcResult.groups[1]?.value
+                    utbSubTitle.label = mathcResult.groups[3]?.value
+                    utbSubTitles[i] = utbSubTitle
+
+                    i++
+                }
+                listener.invoke(utbSubTitles)
+            }
+
+
+            listener.invoke(null)
+
+        }).start()
     }
 
     fun generatePublicFolderLink(folder: UtbFolder): String {

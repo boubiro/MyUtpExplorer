@@ -6,11 +6,11 @@
         android:id="@+id/favorite"
         android:icon="@drawable/ic_action_favorite"
         android:title="@string/menu_favorite"
-        app:showAsAction="ifRoom" />
+        app:showAsAction="always" />
 
     <item
         android:id="@+id/createFolder"
-        android:icon="@drawable/create_folder"
+        android:icon="@drawable/ic_action_create_folder"
         android:title="@string/menu_create_folder"
         app:showAsAction="ifRoom" />
 
@@ -24,7 +24,7 @@
         android:id="@+id/settings"
         android:icon="@drawable/ic_action_settings"
         android:title="@string/menu_settings"
-        app:showAsAction="always" />
+        app:showAsAction="ifRoom" />
 
     <item
         android:id="@+id/media_route_menu_item"

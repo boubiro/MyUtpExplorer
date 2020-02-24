@@ -48,14 +48,6 @@ class ListItemFoldersFiles(items: ArrayList<Any>, ctx: Context) :
             viewHolder.favoriteButton =
                 view.findViewById<View>(R.id.favoriteButton) as MyMaterialFavoriteButton
 
-            viewHolder.favoriteButton?.tag = i
-
-            viewHolder.favoriteButton?.setOnFavoriteChangeListener { buttonView, favorite ->
-                if (viewHolder.favoriteButton?.isListenerable!!) {
-                    this.myFavoriteListener?.onChange(buttonView.tag as Int, favorite)
-                }
-            }
-
         } else {
             viewHolder = view.tag as AttractionItemViewHolder
         }
@@ -97,6 +89,14 @@ class ListItemFoldersFiles(items: ArrayList<Any>, ctx: Context) :
                 viewHolder.imgFolder?.visibility = View.GONE
             }
             else -> viewHolder.name!!.text = ""
+        }
+
+        viewHolder.favoriteButton?.tag = i
+
+        viewHolder.favoriteButton?.setOnFavoriteChangeListener { buttonView, favorite ->
+            if (viewHolder.favoriteButton?.isListenerable!!) {
+                this.myFavoriteListener?.onChange(buttonView.tag as Int, favorite)
+            }
         }
 
         viewHolder.favoriteButton?.isListenerable = false

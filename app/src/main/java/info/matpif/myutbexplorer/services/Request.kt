@@ -45,7 +45,9 @@ class Request(
             val utbResponse = UtbResponse()
             utbResponse.statusCode = jsonResult.getInt("statusCode")
             utbResponse.message = jsonResult.getString("message")
-            utbResponse.data = JSONObject(jsonResult.getString("data"))
+            if (utbResponse.statusCode == 0) {
+                utbResponse.data = JSONObject(jsonResult.getString("data"))
+            }
 
             listener.invoke(utbResponse)
         }

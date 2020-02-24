@@ -2,20 +2,32 @@ package info.matpif.myutbexplorer
 
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
+import android.media.MediaFormat
+import android.media.MediaPlayer
+import android.media.TimedText
 import android.net.Uri
 import android.os.Bundle
+import android.text.TextUtils
 import android.view.Gravity
 import android.view.Menu
 import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.preference.PreferenceManager
+import com.google.android.gms.cast.MediaInfo
+import com.google.android.gms.cast.MediaMetadata
+import com.google.android.gms.cast.MediaTrack
+import com.google.android.gms.common.images.WebImage
 import com.google.gson.Gson
 import info.matpif.myutbexplorer.controllers.MediaController
 import info.matpif.myutbexplorer.models.UtbFile
 import info.matpif.myutbexplorer.services.Uptobox
 import pl.droidsonroids.casty.Casty
 import pl.droidsonroids.casty.MediaData
+import java.io.InputStream
+import java.net.URI
+import java.net.URL
+import java.util.*
 
 
 class StreamActivity : AppCompatActivity() {
@@ -27,6 +39,8 @@ class StreamActivity : AppCompatActivity() {
     private var lastOrientation: Int = 0
     private var flAll: FrameLayout? = null
     private var llText: LinearLayout? = null
+    private var mediaController: MediaController? = null
+    private var videoProgressBar: ProgressBar? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
 
@@ -35,8 +49,8 @@ class StreamActivity : AppCompatActivity() {
         this.videoView = findViewById(R.id.video_view)
         this.flAll = findViewById(R.id.flAll)
         this.llText = findViewById(R.id.llText)
+        this.videoProgressBar = findViewById(R.id.videoProgressBar)
 
-        val videoProgressBar: ProgressBar = findViewById(R.id.videoProgressBar)
         super.onCreate(savedInstanceState)
 
         val prefs = PreferenceManager.getDefaultSharedPreferences(this)
@@ -55,24 +69,58 @@ class StreamActivity : AppCompatActivity() {
         val uri: Uri = Uri.parse(url)
 
         this.casty = Casty.create(this).withMiniController()
-        this.casty?.setOnCastSessionUpdatedListener {
+        this.casty?.setOnCastSessionUpdatedListener { it ->
             if (it.isConnected) {
+                val position = this.videoView!!.currentPosition.toLong()
                 this.videoView?.stopPlayback()
                 this.videoView?.visibility = View.GONE
 
                 if (this.uptobox != null) {
                     this.uptobox!!.getThumbUrl(file) { url ->
                         this.runOnUiThread {
-                            val mediaData: MediaData = MediaData.Builder(url)
-                                .setStreamType(MediaData.STREAM_TYPE_BUFFERED)
-                                .setPosition(this.videoView!!.currentPosition.toLong())
-                                .setContentType("videos/mp4")
-                                .setMediaType(MediaData.MEDIA_TYPE_MOVIE)
-                                .setTitle(file.file_name)
-                                .setSubtitle(file.file_descr)
-                                .addPhotoUrl(url)
-                                .build()
-                            casty?.player?.loadMediaAndPlay(mediaData)
+
+                            val mediaMetadata =
+                                MediaMetadata(MediaData.MEDIA_TYPE_MOVIE)
+
+                            if (!TextUtils.isEmpty(file.file_name)) mediaMetadata.putString(
+                                MediaMetadata.KEY_TITLE,
+                                file.file_name
+                            )
+                            if (!TextUtils.isEmpty(file.file_descr)) mediaMetadata.putString(
+                                MediaMetadata.KEY_SUBTITLE,
+                                file.file_descr
+                            )
+
+                            mediaMetadata.addImage(WebImage(Uri.parse(url)))
+
+                            val tracks = ArrayList<MediaTrack>()
+
+                            this.uptobox?.getSubTitles(file) { utbSubtitles ->
+                                var i: Long = 1
+                                utbSubtitles?.forEach { utbSubTitle ->
+                                    val subtitle =
+                                        MediaTrack.Builder(i, MediaTrack.TYPE_TEXT)
+                                            .setName(utbSubTitle.label)
+                                            .setSubtype(MediaTrack.SUBTYPE_SUBTITLES)
+                                            .setContentId(utbSubTitle.link)
+                                            .build()
+                                    tracks.add(subtitle)
+
+                                    i++
+                                }
+
+                                val mediaInfo: MediaInfo = MediaInfo.Builder(uri.toString())
+                                    .setStreamType(MediaData.STREAM_TYPE_BUFFERED)
+                                    .setContentType("videos/mp4")
+                                    .setMetadata(mediaMetadata)
+                                    .setStreamDuration(-1L)
+                                    .setMediaTracks(tracks)
+                                    .build()
+
+                                this.runOnUiThread {
+                                    casty?.player?.loadMediaAndPlay(mediaInfo, true, position)
+                                }
+                            }
                         }
                     }
                 }
@@ -95,18 +143,23 @@ class StreamActivity : AppCompatActivity() {
 
         if (this.videoView != null) {
 
-            this.videoView?.setOnPreparedListener {
-                videoProgressBar.visibility = View.GONE
-                if (resources.configuration.orientation != ActivityInfo.SCREEN_ORIENTATION_PORTRAIT) {
-                    this.setFullScreen(true)
-                } else {
-                    this.setFullScreen(false)
+            this.videoView?.setOnPreparedListener { mediaPlayer ->
+
+                mediaPlayer.setOnVideoSizeChangedListener { mp, width, height ->
+                    this.videoProgressBar?.visibility = View.GONE
+                    this.mediaController?.setAnchorView(videoView)
+
+                    if (resources.configuration.orientation != ActivityInfo.SCREEN_ORIENTATION_PORTRAIT) {
+                        this.setFullScreen(true)
+                    } else {
+                        this.setFullScreen(false)
+                    }
                 }
             }
 
-            val mediaController = MediaController(this)
+            this.mediaController = MediaController(this)
+            this.mediaController?.setAnchorView(videoView)
             this.videoView?.setMediaController(mediaController)
-
             this.videoView!!.setVideoURI(uri)
             this.videoView!!.seekTo(5)
             this.videoView!!.start()
@@ -166,16 +219,17 @@ class StreamActivity : AppCompatActivity() {
     }
 
     override fun onStop() {
-        super.onStop()
         if (this.videoView?.isPlaying!!) {
             this.videoView!!.pause()
         }
+        super.onStop()
     }
 
     override fun onBackPressed() {
-        if (this.videoView?.isPlaying!!) {
-            this.videoView!!.stopPlayback()
+        if (this.mediaController!!.isShown) {
+            this.mediaController?.hide()
+        } else {
+            super.onBackPressed()
         }
-        super.onBackPressed()
     }
 }
