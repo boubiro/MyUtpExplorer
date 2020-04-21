@@ -90,7 +90,7 @@ class StreamActivity : AppCompatActivity() {
 
                             val tracks = ArrayList<MediaTrack>()
 
-                            val size = prefs.getFloat("subtitle_style_size", 1f)
+                            val size = prefs.getString("subtitle_style_size", "1f")!!.toFloat()
                             val textTrackStyle = TextTrackStyle()
                             textTrackStyle.fontScale = size
 

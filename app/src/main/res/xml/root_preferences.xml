@@ -11,7 +11,7 @@
 
     <PreferenceCategory app:title="@string/messages_header_style">
         <ListPreference
-            android:defaultValue="1f"
+            android:defaultValue="1"
             android:entries="@array/pref_subtitle_size_labels"
             android:entryValues="@array/pref_subtitle_size_values"
             android:key="subtitle_style_size"
