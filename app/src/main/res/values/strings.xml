@@ -3,8 +3,11 @@
     <string name="title_activity_settings">Settings</string>
 
     <!-- Preference Titles -->
-    <string name="messages_header">Add your Uptobox Token</string>
+    <string name="messages_header_add_token">Add your Uptobox Token</string>
     <string name="token_title">Token</string>
+    <string name="messages_header_style">Subtitle style</string>
+    <string name="size_title">Size</string>
+    <string name="size_summary">Select a size</string>
 
     <!-- Menu -->
     <string name="menu_settings">Settings</string>

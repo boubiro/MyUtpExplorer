@@ -2,9 +2,6 @@ package info.matpif.myutbexplorer
 
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
-import android.media.MediaFormat
-import android.media.MediaPlayer
-import android.media.TimedText
 import android.net.Uri
 import android.os.Bundle
 import android.text.TextUtils
@@ -17,6 +14,7 @@ import androidx.preference.PreferenceManager
 import com.google.android.gms.cast.MediaInfo
 import com.google.android.gms.cast.MediaMetadata
 import com.google.android.gms.cast.MediaTrack
+import com.google.android.gms.cast.TextTrackStyle
 import com.google.android.gms.common.images.WebImage
 import com.google.gson.Gson
 import info.matpif.myutbexplorer.controllers.MediaController
@@ -24,9 +22,6 @@ import info.matpif.myutbexplorer.models.UtbFile
 import info.matpif.myutbexplorer.services.Uptobox
 import pl.droidsonroids.casty.Casty
 import pl.droidsonroids.casty.MediaData
-import java.io.InputStream
-import java.net.URI
-import java.net.URL
 import java.util.*
 
 
@@ -95,6 +90,10 @@ class StreamActivity : AppCompatActivity() {
 
                             val tracks = ArrayList<MediaTrack>()
 
+                            val size = prefs.getFloat("subtitle_style_size", 1f)
+                            val textTrackStyle = TextTrackStyle()
+                            textTrackStyle.fontScale = size
+
                             this.uptobox?.getSubTitles(file) { utbSubtitles ->
                                 var i: Long = 1
                                 utbSubtitles?.forEach { utbSubTitle ->
@@ -115,6 +114,7 @@ class StreamActivity : AppCompatActivity() {
                                     .setMetadata(mediaMetadata)
                                     .setStreamDuration(-1L)
                                     .setMediaTracks(tracks)
+                                    .setTextTrackStyle(textTrackStyle)
                                     .build()
 
                                 this.runOnUiThread {

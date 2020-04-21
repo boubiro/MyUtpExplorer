@@ -9,4 +9,17 @@
         <item>reply</item>
         <item>reply_all</item>
     </string-array>
+
+    <string-array name="pref_subtitle_size_labels">
+        <item>x0.5</item>
+        <item>x1</item>
+        <item>x1.5</item>
+        <item>x2</item>
+    </string-array>
+    <string-array name="pref_subtitle_size_values">
+        <item>0.5f</item>
+        <item>1f</item>
+        <item>1.5f</item>
+        <item>2f</item>
+    </string-array>
 </resources>

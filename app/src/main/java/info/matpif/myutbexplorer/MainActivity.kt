@@ -17,6 +17,7 @@ import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.google.android.gms.cast.MediaInfo
 import com.google.android.gms.cast.MediaMetadata
 import com.google.android.gms.cast.MediaTrack
+import com.google.android.gms.cast.TextTrackStyle
 import com.google.android.gms.common.images.WebImage
 import com.google.gson.Gson
 import info.matpif.myutbexplorer.adapters.ListFavorite
@@ -642,6 +643,11 @@ class MainActivity : AppCompatActivity() {
 
                                     val tracks = ArrayList<MediaTrack>()
 
+                                    val prefs = PreferenceManager.getDefaultSharedPreferences(this)
+                                    val size = prefs.getFloat("subtitle_style_size", 1f)
+                                    val textTrackStyle = TextTrackStyle()
+                                    textTrackStyle.fontScale = size
+
                                     this.uptobox?.getSubTitles(file) {
                                         var j: Long = 1
                                         it?.forEach { utbSubTitle ->
@@ -664,6 +670,7 @@ class MainActivity : AppCompatActivity() {
                                                     .setMetadata(mediaMetadata)
                                                     .setStreamDuration(-1L)
                                                     .setMediaTracks(tracks)
+                                                    .setTextTrackStyle(textTrackStyle)
                                                     .build()
 
                                             casty?.player?.loadMediaAndPlay(mediaInfo, true, 0)
