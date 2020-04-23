@@ -377,6 +377,52 @@ class Uptobox(_token: String, _context: Context) {
         }
     }
 
+    fun deleteFilesFolders(
+        models: Array<UtbModel>,
+        finish: (Boolean) -> Unit,
+        errorDeleteFolders: (String) -> Unit,
+        errorDeleteFiles: (String) -> Unit
+    ) {
+        val latch = CountDownLatch(models.size)
+
+        val files: Array<UtbFile>
+        var i = 0
+        models.forEach { model ->
+            if (model is UtbFolder) {
+                this.deleteFolder(model) { isDeleted ->
+                    if (!isDeleted) {
+                        errorDeleteFolders.invoke("Error when delete folder")
+                    }
+                    latch.countDown()
+                }
+            } else if (model is UtbFile) {
+                i++
+            }
+        }
+
+        files = Array(i) { UtbFile() }
+        i = 0
+        models.forEach { model ->
+            if (model is UtbFile) {
+                files[i] = model
+                i++
+            }
+        }
+
+        this.deleteFiles(files) { isDeleted ->
+            if (!isDeleted) {
+                errorDeleteFiles.invoke("Error when delete file")
+            }
+
+            files.forEach {
+                latch.countDown()
+            }
+        }
+
+        latch.await()
+        finish.invoke(true)
+    }
+
     fun deleteFiles(files: Array<UtbFile>, listener: (Boolean) -> Unit) {
 
         var fileCodes: String = ""

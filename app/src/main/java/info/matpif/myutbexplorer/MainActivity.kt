@@ -8,6 +8,7 @@ import android.text.TextUtils
 import android.view.*
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import androidx.collection.ArrayMap
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.app.ShareCompat
 import androidx.preference.PreferenceManager
@@ -124,11 +125,9 @@ class MainActivity : AppCompatActivity() {
 
                     if (this@MainActivity.adapter?.getSelectedItem()?.size!! > 1) {
                         this.itemEdit?.isVisible = false
-                        this.itemDelete?.isVisible = false
                         this.itemShare?.isVisible = false
                     } else {
                         this.itemEdit?.isVisible = true
-                        this.itemDelete?.isVisible = true
                         this.itemShare?.isVisible = true
                     }
                 }
@@ -165,6 +164,8 @@ class MainActivity : AppCompatActivity() {
                                 this@MainActivity.adapter?.getSelectedItem()?.forEach {
                                     this@MainActivity.deleteForm(it.key)
                                 }
+                            } else {
+                                this@MainActivity.deleteForm(this@MainActivity.adapter?.getSelectedItem())
                             }
                             mode.finish()
                             true
@@ -598,6 +599,54 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun deleteForm(positions: ArrayMap<Int, Boolean>?) {
+        if (positions != null) {
+            val builder = AlertDialog.Builder(this)
+            builder.setTitle("Delete")
+                .setMessage("Do you want to Delete (" + positions.size + " elements)")
+                .setIcon(R.drawable.ic_action_delete_light)
+                .setPositiveButton(
+                    R.string.dialog_ok
+                ) { dialog, id ->
+
+                    val models: Array<UtbModel> = Array(positions.size) { UtbModel() }
+                    var i = 0
+                    positions.forEach {
+                        val item = this.adapter?.getItem(it.key)
+                        if (item is UtbModel) {
+                            models[i] = item
+                            i++
+                        }
+                    }
+
+                    this.uptobox?.deleteFilesFolders(models,
+                        { isFinish ->
+                            if (isFinish) {
+                                this.adapter?.removeAllSelectedItem()
+                                this.adapter?.setSelectedItemToPaste()
+                                this.invalidateOptionsMenu()
+                                this.reloadCurrentPath()
+                            }
+                        },
+                        { message ->
+                            this.runOnUiThread {
+                                Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+                            }
+                        },
+                        { message ->
+                            this.runOnUiThread {
+                                Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+                            }
+                        })
+                }
+                .setNegativeButton(
+                    R.string.dialog_cancel
+                ) { dialog, id ->
+                }
+            builder.create().show()
+        }
+    }
+
     private fun showAvailableFiles(fileCode: String?, file: UtbFile) {
         if (fileCode != null) {
             this.uptobox?.getListAvailableFile(fileCode) { currentStreamLinks ->
@@ -644,7 +693,8 @@ class MainActivity : AppCompatActivity() {
                                     val tracks = ArrayList<MediaTrack>()
 
                                     val prefs = PreferenceManager.getDefaultSharedPreferences(this)
-                                    val size = prefs.getString("subtitle_style_size", "1f")!!.toFloat()
+                                    val size =
+                                        prefs.getString("subtitle_style_size", "1f")!!.toFloat()
                                     val textTrackStyle = TextTrackStyle()
                                     textTrackStyle.fontScale = size
 
