@@ -5,6 +5,14 @@
 
     <dist:module dist:instant="true" />
 
+    <uses-feature
+        android:name="android.software.leanback"
+        android:required="true" />
+
+    <uses-feature
+        android:name="android.hardware.touchscreen"
+        android:required="false" />
+
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -16,7 +24,18 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
+        <activity
+            android:name=".MainTVActivity"
+            android:banner="@drawable/ic_tv"
+            android:icon="@drawable/ic_tv"
+            android:label="@string/app_name"
+            android:logo="@drawable/ic_tv">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
 
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+        </activity>
         <activity
             android:name=".SettingsActivity"
             android:label="@string/title_activity_settings"
@@ -25,8 +44,9 @@
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="info.matpif.myutbexplorer.MainActivity" />
         </activity>
-
-        <activity android:name=".StreamActivity" android:configChanges="orientation|screenSize">
+        <activity
+            android:name=".StreamActivity"
+            android:configChanges="orientation|screenSize">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
             </intent-filter>
