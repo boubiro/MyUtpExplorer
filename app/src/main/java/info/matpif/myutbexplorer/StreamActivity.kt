@@ -18,6 +18,7 @@ import com.google.android.gms.cast.TextTrackStyle
 import com.google.android.gms.common.images.WebImage
 import com.google.gson.Gson
 import info.matpif.myutbexplorer.controllers.MediaController
+import info.matpif.myutbexplorer.helpers.MyHelper
 import info.matpif.myutbexplorer.models.UtbFile
 import info.matpif.myutbexplorer.services.Uptobox
 import pl.droidsonroids.casty.Casty
@@ -63,7 +64,9 @@ class StreamActivity : AppCompatActivity() {
         val url: String? = intent.getStringExtra("url")
         val uri: Uri = Uri.parse(url)
 
-        try {
+        val myHelper = MyHelper(this)
+
+        if (!myHelper.isTV()) {
             this.casty = Casty.create(this).withMiniController()
             this.casty?.setOnCastSessionUpdatedListener { it ->
                 if (it.isConnected) {
@@ -127,8 +130,6 @@ class StreamActivity : AppCompatActivity() {
                     }
                 }
             }
-        } catch (ex: Exception) {
-
         }
 
         lastOrientation = resources.configuration.orientation

@@ -25,6 +25,7 @@ import info.matpif.myutbexplorer.adapters.ListFavorite
 import info.matpif.myutbexplorer.adapters.ListItemFoldersFiles
 import info.matpif.myutbexplorer.entities.UtbAttributes
 import info.matpif.myutbexplorer.entities.databases.AppDatabase
+import info.matpif.myutbexplorer.helpers.MyHelper
 import info.matpif.myutbexplorer.listeners.MyFavoriteListener
 import info.matpif.myutbexplorer.models.UtbFile
 import info.matpif.myutbexplorer.models.UtbFolder
@@ -58,11 +59,10 @@ class MainActivity : AppCompatActivity() {
             this.currentFolderOrientation = savedInstanceState.getString("currentPath")
         }
 
+        val myHelper = MyHelper(this)
 
-        try {
+        if (!myHelper.isTV()) {
             this.casty = Casty.create(this).withMiniController()
-        } catch (ex: Exception) {
-
         }
 
         this.listFoldersFiles = findViewById(R.id.list_folders_files)
