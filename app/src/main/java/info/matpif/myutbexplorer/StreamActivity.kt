@@ -63,68 +63,72 @@ class StreamActivity : AppCompatActivity() {
         val url: String? = intent.getStringExtra("url")
         val uri: Uri = Uri.parse(url)
 
-        this.casty = Casty.create(this).withMiniController()
-        this.casty?.setOnCastSessionUpdatedListener { it ->
-            if (it.isConnected) {
-                val position = this.videoView!!.currentPosition.toLong()
-                this.videoView?.stopPlayback()
-                this.videoView?.visibility = View.GONE
+        try {
+            this.casty = Casty.create(this).withMiniController()
+            this.casty?.setOnCastSessionUpdatedListener { it ->
+                if (it.isConnected) {
+                    val position = this.videoView!!.currentPosition.toLong()
+                    this.videoView?.stopPlayback()
+                    this.videoView?.visibility = View.GONE
 
-                if (this.uptobox != null) {
-                    this.uptobox!!.getThumbUrl(file) { url ->
-                        this.runOnUiThread {
+                    if (this.uptobox != null) {
+                        this.uptobox!!.getThumbUrl(file) { url ->
+                            this.runOnUiThread {
 
-                            val mediaMetadata =
-                                MediaMetadata(MediaData.MEDIA_TYPE_MOVIE)
+                                val mediaMetadata =
+                                    MediaMetadata(MediaData.MEDIA_TYPE_MOVIE)
 
-                            if (!TextUtils.isEmpty(file.file_name)) mediaMetadata.putString(
-                                MediaMetadata.KEY_TITLE,
-                                file.file_name
-                            )
-                            if (!TextUtils.isEmpty(file.file_descr)) mediaMetadata.putString(
-                                MediaMetadata.KEY_SUBTITLE,
-                                file.file_descr
-                            )
+                                if (!TextUtils.isEmpty(file.file_name)) mediaMetadata.putString(
+                                    MediaMetadata.KEY_TITLE,
+                                    file.file_name
+                                )
+                                if (!TextUtils.isEmpty(file.file_descr)) mediaMetadata.putString(
+                                    MediaMetadata.KEY_SUBTITLE,
+                                    file.file_descr
+                                )
 
-                            mediaMetadata.addImage(WebImage(Uri.parse(url)))
+                                mediaMetadata.addImage(WebImage(Uri.parse(url)))
 
-                            val tracks = ArrayList<MediaTrack>()
+                                val tracks = ArrayList<MediaTrack>()
 
-                            val size = prefs.getString("subtitle_style_size", "1f")!!.toFloat()
-                            val textTrackStyle = TextTrackStyle()
-                            textTrackStyle.fontScale = size
+                                val size = prefs.getString("subtitle_style_size", "1f")!!.toFloat()
+                                val textTrackStyle = TextTrackStyle()
+                                textTrackStyle.fontScale = size
 
-                            this.uptobox?.getSubTitles(file) { utbSubtitles ->
-                                var i: Long = 1
-                                utbSubtitles?.forEach { utbSubTitle ->
-                                    val subtitle =
-                                        MediaTrack.Builder(i, MediaTrack.TYPE_TEXT)
-                                            .setName(utbSubTitle.label)
-                                            .setSubtype(MediaTrack.SUBTYPE_SUBTITLES)
-                                            .setContentId(utbSubTitle.link)
-                                            .build()
-                                    tracks.add(subtitle)
+                                this.uptobox?.getSubTitles(file) { utbSubtitles ->
+                                    var i: Long = 1
+                                    utbSubtitles?.forEach { utbSubTitle ->
+                                        val subtitle =
+                                            MediaTrack.Builder(i, MediaTrack.TYPE_TEXT)
+                                                .setName(utbSubTitle.label)
+                                                .setSubtype(MediaTrack.SUBTYPE_SUBTITLES)
+                                                .setContentId(utbSubTitle.link)
+                                                .build()
+                                        tracks.add(subtitle)
 
-                                    i++
-                                }
+                                        i++
+                                    }
 
-                                val mediaInfo: MediaInfo = MediaInfo.Builder(uri.toString())
-                                    .setStreamType(MediaData.STREAM_TYPE_BUFFERED)
-                                    .setContentType("videos/mp4")
-                                    .setMetadata(mediaMetadata)
-                                    .setStreamDuration(-1L)
-                                    .setMediaTracks(tracks)
-                                    .setTextTrackStyle(textTrackStyle)
-                                    .build()
+                                    val mediaInfo: MediaInfo = MediaInfo.Builder(uri.toString())
+                                        .setStreamType(MediaData.STREAM_TYPE_BUFFERED)
+                                        .setContentType("videos/mp4")
+                                        .setMetadata(mediaMetadata)
+                                        .setStreamDuration(-1L)
+                                        .setMediaTracks(tracks)
+                                        .setTextTrackStyle(textTrackStyle)
+                                        .build()
 
-                                this.runOnUiThread {
-                                    casty?.player?.loadMediaAndPlay(mediaInfo, true, position)
+                                    this.runOnUiThread {
+                                        casty?.player?.loadMediaAndPlay(mediaInfo, true, position)
+                                    }
                                 }
                             }
                         }
                     }
                 }
             }
+        } catch (ex: Exception) {
+
         }
 
         lastOrientation = resources.configuration.orientation
@@ -211,7 +215,7 @@ class StreamActivity : AppCompatActivity() {
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         super.onCreateOptionsMenu(menu)
-        if (menu != null) {
+        if (menu != null && casty != null) {
             casty?.addMediaRouteMenuItem(menu)
         }
         menuInflater.inflate(R.menu.browse_stream, menu)

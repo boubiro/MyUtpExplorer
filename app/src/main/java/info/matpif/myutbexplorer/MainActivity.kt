@@ -58,7 +58,12 @@ class MainActivity : AppCompatActivity() {
             this.currentFolderOrientation = savedInstanceState.getString("currentPath")
         }
 
-        this.casty = Casty.create(this).withMiniController()
+
+        try {
+            this.casty = Casty.create(this).withMiniController()
+        } catch (ex: Exception) {
+
+        }
 
         this.listFoldersFiles = findViewById(R.id.list_folders_files)
         this.progressBar = findViewById(R.id.progressBar)
@@ -752,7 +757,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         super.onCreateOptionsMenu(menu)
-        if (menu != null) {
+        if (menu != null && casty != null) {
             casty?.addMediaRouteMenuItem(menu)
         }
         menuInflater.inflate(R.menu.browse, menu)
