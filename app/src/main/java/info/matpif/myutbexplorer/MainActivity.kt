@@ -673,7 +673,7 @@ class MainActivity : AppCompatActivity() {
                     this.createDialogChoose(labels) { index ->
                         val streamLink = streamLinks?.get(index)
                         if (casty == null || !casty?.isConnected!!) {
-                            val intent = Intent(this, StreamActivity::class.java)
+                            val intent = Intent(this, Stream2Activity::class.java)
                             intent.putExtra("url", streamLink?.url)
                             intent.putExtra("file", Gson().toJson(file.getData()))
                             startActivity(intent)

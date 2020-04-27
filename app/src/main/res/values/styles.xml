@@ -8,4 +8,9 @@
         <item name="colorAccent">@color/colorAccent</item>
     </style>
 
+
+    <style name="ExoMediaButton.Subtitle">
+        <item name="android:src">@drawable/ic_action_subtitles</item>
+    </style>
+
 </resources>
