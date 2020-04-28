@@ -17,4 +17,7 @@
 
     <color name="background_color_fullscreen">#000000</color>
     <color name="background_color_without_fullscreen">#FFFFFF</color>
+
+
+    <color name="exoFocusColor">#B5B5B5</color>
 </resources>

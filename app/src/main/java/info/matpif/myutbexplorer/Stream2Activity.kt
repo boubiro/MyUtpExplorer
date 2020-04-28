@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.app.AlertDialog
 import android.net.Uri
 import android.os.Bundle
+import android.view.KeyEvent
 import android.view.View
 import android.widget.ImageButton
 import androidx.appcompat.app.AppCompatActivity
@@ -37,6 +38,8 @@ class Stream2Activity : AppCompatActivity() {
     private var playbackPosition: Long = 0
     private var uptobox: Uptobox? = null
     private var currentFile: UtbFile? = null
+    private var subtitleButton: ImageButton? = null
+    private var controllerExoView: PlayerControlView? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -56,11 +59,10 @@ class Stream2Activity : AppCompatActivity() {
         )
 
         this.playerView = findViewById(R.id.video_view)
-        val controllerExoView: PlayerControlView? =
-            this.playerView?.findViewById(R.id.exo_controller)
-        val subtitleButton: ImageButton? = controllerExoView?.findViewById(R.id.exo_subtitles)
+        this.controllerExoView = this.playerView?.findViewById(R.id.exo_controller)
+        this.subtitleButton = controllerExoView?.findViewById(R.id.exo_subtitles)
 
-        subtitleButton?.setOnClickListener {
+        this.subtitleButton?.setOnClickListener {
             this.uptobox?.getSubTitles(this.currentFile!!) { utbSubtitles ->
 
                 if (utbSubtitles != null) {
@@ -196,5 +198,22 @@ class Stream2Activity : AppCompatActivity() {
                 or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
                 or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
                 or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION)
+    }
+
+    override fun dispatchKeyEvent(event: KeyEvent?): Boolean {
+        if (event != null) {
+            return this.myDispatchKey(event) || this.playerView?.dispatchKeyEvent(event)!!
+        }
+
+        return true;
+    }
+
+    private fun myDispatchKey(event: KeyEvent?): Boolean {
+        val keyCode = event?.keyCode
+
+        if (keyCode == KeyEvent.KEYCODE_BACK)
+            return super.dispatchKeyEvent(event)
+
+        return false
     }
 }
