@@ -27,6 +27,7 @@ import com.google.gson.Gson
 import info.matpif.myutbexplorer.models.UtbFile
 import info.matpif.myutbexplorer.models.UtbSubTitle
 import info.matpif.myutbexplorer.services.Uptobox
+import org.json.JSONArray
 
 
 class Stream2Activity : AppCompatActivity() {
@@ -38,6 +39,7 @@ class Stream2Activity : AppCompatActivity() {
     private var playbackPosition: Long = 0
     private var uptobox: Uptobox? = null
     private var currentFile: UtbFile? = null
+    private var currentSubtitles: Array<UtbSubTitle>? = null
     private var subtitleButton: ImageButton? = null
     private var controllerExoView: PlayerControlView? = null
 
@@ -58,44 +60,57 @@ class Stream2Activity : AppCompatActivity() {
             )
         )
 
+        val jsonSubtitle = JSONArray(intent.getStringExtra("subtitles"))
+
+        if (jsonSubtitle.length() > 0) {
+            this.currentSubtitles = Array(jsonSubtitle.length()) { UtbSubTitle() }
+
+            for (i in 0 until jsonSubtitle.length()) {
+                val item = jsonSubtitle.getString(i)
+                this.currentSubtitles!![i] = UtbSubTitle().pushData(
+                    Gson().fromJson(
+                        item,
+                        UtbSubTitle.DataUtbSubTitle::class.java
+                    )
+                )
+            }
+        }
+
         this.playerView = findViewById(R.id.video_view)
         this.controllerExoView = this.playerView?.findViewById(R.id.exo_controller)
         this.subtitleButton = controllerExoView?.findViewById(R.id.exo_subtitles)
 
         this.subtitleButton?.setOnClickListener {
-            this.uptobox?.getSubTitles(this.currentFile!!) { utbSubtitles ->
+            if (this.currentSubtitles != null) {
+                val labels: Array<String>? = Array(this.currentSubtitles!!.size + 1) { "" }
+                var i = 0
+                labels?.set(
+                    i,
+                    "No subtitles"
+                )
+                i++
 
-                if (utbSubtitles != null) {
-                    val labels: Array<String>? = Array(utbSubtitles.size + 1) { "" }
-                    var i = 0
+                this.currentSubtitles!!.forEach { utbSubtitle ->
                     labels?.set(
                         i,
-                        "No subtitles"
+                        "${utbSubtitle.label}"
                     )
                     i++
+                }
 
-                    utbSubtitles.forEach { utbSubtitle ->
-                        labels?.set(
-                            i,
-                            "${utbSubtitle.label}"
-                        )
-                        i++
-                    }
-
-                    runOnUiThread {
-                        val builder = AlertDialog.Builder(this)
-                        builder.setTitle("Choose")
-                            .setItems(
-                                labels
-                            ) { dialog, which ->
-                                if (which == 0) {
-                                    this.selectSubtitle(null)
-                                } else {
-                                    this.selectSubtitle(utbSubtitles[which - 1])
-                                }
+                runOnUiThread {
+                    val builder = AlertDialog.Builder(this)
+                    builder.setTitle("Choose")
+                        .setItems(
+                            labels
+                        ) { dialog, which ->
+                            if (which == 0) {
+                                this.selectSubtitle(null)
+                            } else {
+                                this.selectSubtitle(this.currentSubtitles!![which - 1])
                             }
-                        builder.create().show()
-                    }
+                        }
+                    builder.create().show()
                 }
             }
         }

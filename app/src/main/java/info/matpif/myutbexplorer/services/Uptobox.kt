@@ -5,6 +5,7 @@ import android.util.Log
 import info.matpif.myutbexplorer.entities.databases.AppDatabase
 import info.matpif.myutbexplorer.models.*
 import info.matpif.myutbexplorer.services.data.*
+import org.json.JSONArray
 import org.json.JSONObject
 import org.jsoup.Jsoup
 import java.net.URL
@@ -281,6 +282,7 @@ class Uptobox(_token: String, _context: Context) {
             val utbStreamLinks = UtbStreamLinks()
             var count = 0
             val streamLinks = JSONObject(utbResponse.data?.getString("streamLinks"))
+            val subtitles = JSONArray(utbResponse.data?.getString("subs"))
             var keys = streamLinks.keys()
             var host = ""
 
@@ -297,6 +299,19 @@ class Uptobox(_token: String, _context: Context) {
                     val url = languages.getString(keyLanguage)
                     count++
                 }
+            }
+
+            utbStreamLinks.subtitles = Array(subtitles.length()) { UtbSubTitle() }
+            for (i in 0 until subtitles.length()) {
+                val item = subtitles.getJSONObject(i)
+
+                val utbSub = UtbSubTitle()
+                utbSub.type = item.getString("type")
+                utbSub.link = item.getString("src")
+                utbSub.src = item.getString("src")
+                utbSub.label = item.getString("label")
+                utbSub.srcLang = item.getString("srcLang")
+                utbStreamLinks.subtitles!![i] = utbSub
             }
 
             this.getDirectDownloadLink(file_code) {
@@ -457,6 +472,7 @@ class Uptobox(_token: String, _context: Context) {
         }
     }
 
+    @Deprecated(message = "Use getListAvailableFile() method")
     fun getSubTitles(videoFile: UtbFile, listener: (Array<UtbSubTitle>?) -> Unit) {
 
         Thread(Runnable {

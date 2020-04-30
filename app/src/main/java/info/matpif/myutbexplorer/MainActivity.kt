@@ -676,6 +676,7 @@ class MainActivity : AppCompatActivity() {
                             val intent = Intent(this, Stream2Activity::class.java)
                             intent.putExtra("url", streamLink?.url)
                             intent.putExtra("file", Gson().toJson(file.getData()))
+                            intent.putExtra("subtitles", Gson().toJson(currentStreamLinks.subtitles))
                             startActivity(intent)
                         } else {
                             this.uptobox!!.getThumbUrl(file) { url ->
@@ -703,33 +704,31 @@ class MainActivity : AppCompatActivity() {
                                     val textTrackStyle = TextTrackStyle()
                                     textTrackStyle.fontScale = size
 
-                                    this.uptobox?.getSubTitles(file) {
-                                        var j: Long = 1
-                                        it?.forEach { utbSubTitle ->
-                                            val subtitle =
-                                                MediaTrack.Builder(j, MediaTrack.TYPE_TEXT)
-                                                    .setName(utbSubTitle.label)
-                                                    .setSubtype(MediaTrack.SUBTYPE_SUBTITLES)
-                                                    .setContentId(utbSubTitle.link)
-                                                    .build()
-                                            tracks.add(subtitle)
+                                    var j: Long = 1
+                                    currentStreamLinks.subtitles?.forEach { utbSubTitle ->
+                                        val subtitle =
+                                            MediaTrack.Builder(j, MediaTrack.TYPE_TEXT)
+                                                .setName(utbSubTitle.label)
+                                                .setSubtype(MediaTrack.SUBTYPE_SUBTITLES)
+                                                .setContentId(utbSubTitle.link)
+                                                .build()
+                                        tracks.add(subtitle)
 
-                                            j++
-                                        }
+                                        j++
+                                    }
 
-                                        this.runOnUiThread {
-                                            val mediaInfo: MediaInfo =
-                                                MediaInfo.Builder(streamLink?.url)
-                                                    .setStreamType(MediaData.STREAM_TYPE_BUFFERED)
-                                                    .setContentType("videos/mp4")
-                                                    .setMetadata(mediaMetadata)
-                                                    .setStreamDuration(-1L)
-                                                    .setMediaTracks(tracks)
-                                                    .setTextTrackStyle(textTrackStyle)
-                                                    .build()
+                                    this.runOnUiThread {
+                                        val mediaInfo: MediaInfo =
+                                            MediaInfo.Builder(streamLink?.url)
+                                                .setStreamType(MediaData.STREAM_TYPE_BUFFERED)
+                                                .setContentType("videos/mp4")
+                                                .setMetadata(mediaMetadata)
+                                                .setStreamDuration(-1L)
+                                                .setMediaTracks(tracks)
+                                                .setTextTrackStyle(textTrackStyle)
+                                                .build()
 
-                                            casty?.player?.loadMediaAndPlay(mediaInfo, true, 0)
-                                        }
+                                        casty?.player?.loadMediaAndPlay(mediaInfo, true, 0)
                                     }
                                 }
                             }
