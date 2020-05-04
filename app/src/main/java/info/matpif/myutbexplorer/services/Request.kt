@@ -17,6 +17,8 @@ class Request(
     private var url_api_path: String
 ) {
 
+    private var requestListener: RequestListener? = null
+
     fun getRequest(
         method: String,
         params: List<Pair<String, Any?>>,
@@ -40,16 +42,22 @@ class Request(
             .url(url.build())
             .get()
             .build()
-        client.newCall(request).execute().use { response ->
-            val jsonResult = JSONObject(response.body?.string())
-            val utbResponse = UtbResponse()
-            utbResponse.statusCode = jsonResult.getInt("statusCode")
-            utbResponse.message = jsonResult.getString("message")
-            if (utbResponse.statusCode == 0) {
-                utbResponse.data = JSONObject(jsonResult.getString("data"))
-            }
+        try {
+            client.newCall(request).execute().use { response ->
+                val jsonResult = JSONObject(response.body?.string())
+                val utbResponse = UtbResponse()
+                utbResponse.statusCode = jsonResult.getInt("statusCode")
+                utbResponse.message = jsonResult.getString("message")
+                if (utbResponse.statusCode == 0) {
+                    utbResponse.data = JSONObject(jsonResult.getString("data"))
+                }
 
-            listener.invoke(utbResponse)
+                listener.invoke(utbResponse)
+            }
+        } catch (ex: Exception) {
+            if (this.requestListener != null) {
+                this.requestListener!!.onError(ex.message!!)
+            }
         }
     }).start()
 
@@ -78,18 +86,25 @@ class Request(
             .url(url.build())
             .patch(body)
             .build()
-        client.newCall(request).execute().use { response ->
-            val body = response.body!!.string()
-            val jsonResult = JSONObject(body)
-            val utbResponse = UtbResponse()
-            utbResponse.statusCode = jsonResult.getInt("statusCode")
-            utbResponse.message = jsonResult.getString("message")
-            try {
-                utbResponse.data = JSONObject(jsonResult.getString("data"))
-            } catch (ex: Exception) {
-            }
 
-            listener.invoke(utbResponse)
+        try {
+            client.newCall(request).execute().use { response ->
+                val body = response.body!!.string()
+                val jsonResult = JSONObject(body)
+                val utbResponse = UtbResponse()
+                utbResponse.statusCode = jsonResult.getInt("statusCode")
+                utbResponse.message = jsonResult.getString("message")
+                try {
+                    utbResponse.data = JSONObject(jsonResult.getString("data"))
+                } catch (ex: Exception) {
+                }
+
+                listener.invoke(utbResponse)
+            }
+        } catch (ex: Exception) {
+            if (this.requestListener != null) {
+                this.requestListener!!.onError(ex.message!!)
+            }
         }
     }).start()
 
@@ -118,18 +133,25 @@ class Request(
             .url(url.build())
             .put(body)
             .build()
-        client.newCall(request).execute().use { response ->
-            val body = response.body!!.string()
-            val jsonResult = JSONObject(body)
-            val utbResponse = UtbResponse()
-            utbResponse.statusCode = jsonResult.getInt("statusCode")
-            utbResponse.message = jsonResult.getString("message")
-            try {
-                utbResponse.data = JSONObject(jsonResult.getString("data"))
-            } catch (ex: Exception) {
-            }
 
-            listener.invoke(utbResponse)
+        try {
+            client.newCall(request).execute().use { response ->
+                val body = response.body!!.string()
+                val jsonResult = JSONObject(body)
+                val utbResponse = UtbResponse()
+                utbResponse.statusCode = jsonResult.getInt("statusCode")
+                utbResponse.message = jsonResult.getString("message")
+                try {
+                    utbResponse.data = JSONObject(jsonResult.getString("data"))
+                } catch (ex: Exception) {
+                }
+
+                listener.invoke(utbResponse)
+            }
+        } catch (ex: Exception) {
+            if (this.requestListener != null) {
+                this.requestListener!!.onError(ex.message!!)
+            }
         }
     }).start()
 
@@ -158,18 +180,29 @@ class Request(
             .url(url.build())
             .delete(body)
             .build()
-        client.newCall(request).execute().use { response ->
-            val body = response.body!!.string()
-            val jsonResult = JSONObject(body)
-            val utbResponse = UtbResponse()
-            utbResponse.statusCode = jsonResult.getInt("statusCode")
-            utbResponse.message = jsonResult.getString("message")
-            try {
-                utbResponse.data = JSONObject(jsonResult.getString("data"))
-            } catch (ex: Exception) {
-            }
 
-            listener.invoke(utbResponse)
+        try {
+            client.newCall(request).execute().use { response ->
+                val body = response.body!!.string()
+                val jsonResult = JSONObject(body)
+                val utbResponse = UtbResponse()
+                utbResponse.statusCode = jsonResult.getInt("statusCode")
+                utbResponse.message = jsonResult.getString("message")
+                try {
+                    utbResponse.data = JSONObject(jsonResult.getString("data"))
+                } catch (ex: Exception) {
+                }
+
+                listener.invoke(utbResponse)
+            }
+        } catch (ex: Exception) {
+            if (this.requestListener != null) {
+                this.requestListener!!.onError(ex.message!!)
+            }
         }
     }).start()
+
+    fun setOnRequestListener(requestListener: RequestListener) {
+        this.requestListener = requestListener;
+    }
 }

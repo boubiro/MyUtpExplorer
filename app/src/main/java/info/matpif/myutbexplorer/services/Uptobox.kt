@@ -525,4 +525,8 @@ class Uptobox(_token: String, _context: Context) {
             }
         }
     }
+
+    fun setOnRequestListener(requestListener: RequestListener) {
+        this.request.setOnRequestListener(requestListener)
+    }
 }

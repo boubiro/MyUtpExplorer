@@ -30,6 +30,7 @@ import info.matpif.myutbexplorer.listeners.MyFavoriteListener
 import info.matpif.myutbexplorer.models.UtbFile
 import info.matpif.myutbexplorer.models.UtbFolder
 import info.matpif.myutbexplorer.models.UtbModel
+import info.matpif.myutbexplorer.services.RequestListener
 import info.matpif.myutbexplorer.services.Uptobox
 import pl.droidsonroids.casty.Casty
 import pl.droidsonroids.casty.MediaData
@@ -214,6 +215,18 @@ class MainActivity : AppCompatActivity() {
         val token = prefs.getString("token", "")
         if (token != null && token != "") {
             this.uptobox = Uptobox(token, this)
+            this.uptobox?.setOnRequestListener(object : RequestListener {
+                override fun onError(message: String) {
+                    this@MainActivity.runOnUiThread {
+                        this@MainActivity.progressBar!!.visibility = View.INVISIBLE
+                        Toast.makeText(
+                            this@MainActivity,
+                            message,
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+            })
             this.listFoldersFiles!!.onItemClickListener =
                 AdapterView.OnItemClickListener { parent, view, position, id ->
                     val selectedItem = parent.getItemAtPosition(position)
@@ -273,6 +286,8 @@ class MainActivity : AppCompatActivity() {
                     "//"
                 }
             this.reload(path)
+        } else {
+            this.reload("//")
         }
     }
 
@@ -676,7 +691,10 @@ class MainActivity : AppCompatActivity() {
                             val intent = Intent(this, Stream2Activity::class.java)
                             intent.putExtra("url", streamLink?.url)
                             intent.putExtra("file", Gson().toJson(file.getData()))
-                            intent.putExtra("subtitles", Gson().toJson(currentStreamLinks.subtitles))
+                            intent.putExtra(
+                                "subtitles",
+                                Gson().toJson(currentStreamLinks.subtitles)
+                            )
                             startActivity(intent)
                         } else {
                             this.uptobox!!.getThumbUrl(file) { url ->
