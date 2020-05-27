@@ -426,9 +426,11 @@ class MainActivity : AppCompatActivity() {
                 this.uptobox?.uploadFile(file) {
                     if (it) {
                         builderNotification.setSubText("Upload complete")
-                        builderNotification.setProgress(0, 0, false)
-                        notificationManager.notify(2, builderNotification.build())
+                    } else {
+                        builderNotification.setSubText("Upload error")
                     }
+                    builderNotification.setProgress(0, 0, false)
+                    notificationManager.notify(2, builderNotification.build())
                     this.reloadCurrentPath()
                 }
             }
