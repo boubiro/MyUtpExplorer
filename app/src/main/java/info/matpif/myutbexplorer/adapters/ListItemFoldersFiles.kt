@@ -16,7 +16,7 @@ import info.matpif.myutbexplorer.models.UtbFolder
 import info.matpif.myutbexplorer.models.UtbModel
 import info.matpif.myutbexplorer.views.MyMaterialFavoriteButton
 
-class ListItemFoldersFiles(items: ArrayList<Any>, ctx: Context) :
+class ListItemFoldersFiles(private var items: ArrayList<Any>, ctx: Context) :
     ArrayAdapter<Any>(ctx, R.layout.list_item_folders_files, items) {
 
     private class AttractionItemViewHolder {
@@ -174,5 +174,9 @@ class ListItemFoldersFiles(items: ArrayList<Any>, ctx: Context) :
 
     fun setOnMyFavoriteListener(listener: MyFavoriteListener) {
         this.myFavoriteListener = listener
+    }
+
+    fun getItems(): ArrayList<Any> {
+        return this.items
     }
 }

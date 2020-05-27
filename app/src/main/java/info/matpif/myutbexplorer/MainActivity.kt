@@ -1,32 +1,39 @@
 package info.matpif.myutbexplorer
 
 import android.app.AlertDialog
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.text.TextUtils
+import android.util.Log
 import android.view.*
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.collection.ArrayMap
 import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.ShareCompat
 import androidx.preference.PreferenceManager
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
-import com.bumptech.glide.Glide
-import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.google.android.gms.cast.MediaInfo
 import com.google.android.gms.cast.MediaMetadata
 import com.google.android.gms.cast.MediaTrack
 import com.google.android.gms.cast.TextTrackStyle
 import com.google.android.gms.common.images.WebImage
 import com.google.gson.Gson
+import com.squareup.picasso.Picasso
 import info.matpif.myutbexplorer.adapters.ListFavorite
 import info.matpif.myutbexplorer.adapters.ListItemFoldersFiles
 import info.matpif.myutbexplorer.entities.UtbAttributes
 import info.matpif.myutbexplorer.entities.databases.AppDatabase
+import info.matpif.myutbexplorer.helpers.FileUtils
 import info.matpif.myutbexplorer.helpers.MyHelper
 import info.matpif.myutbexplorer.listeners.MyFavoriteListener
+import info.matpif.myutbexplorer.models.UtbCurrentFolder
 import info.matpif.myutbexplorer.models.UtbFile
 import info.matpif.myutbexplorer.models.UtbFolder
 import info.matpif.myutbexplorer.models.UtbModel
@@ -34,6 +41,7 @@ import info.matpif.myutbexplorer.services.RequestListener
 import info.matpif.myutbexplorer.services.Uptobox
 import pl.droidsonroids.casty.Casty
 import pl.droidsonroids.casty.MediaData
+import java.io.File
 
 
 class MainActivity : AppCompatActivity() {
@@ -42,6 +50,7 @@ class MainActivity : AppCompatActivity() {
     private var uptobox: Uptobox? = null
     private var progressBar: ProgressBar? = null
     private var currentFolder: UtbFolder? = null
+    private var utbCurrentFolder: UtbCurrentFolder? = null
     private var adapter: ListItemFoldersFiles? = null
     private var breadcrumbTv: TextView? = null
     private var casty: Casty? = null
@@ -51,10 +60,18 @@ class MainActivity : AppCompatActivity() {
     private var tvCutElement: TextView? = null
     private var alertDialog: AlertDialog? = null
     private var currentFolderOrientation: String? = null
+    private var pictureHolder: FrameLayout? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        val action = intent.action
+        val type = intent.type
+
+        if (Intent.ACTION_SEND == action && type != null) {
+            this.handleSendFile(intent)
+        }
 
         if (savedInstanceState != null) {
             this.currentFolderOrientation = savedInstanceState.getString("currentPath")
@@ -73,6 +90,7 @@ class MainActivity : AppCompatActivity() {
         this.btnPaste = findViewById(R.id.paste)
         this.cancelPaste = findViewById(R.id.cancel_paste)
         this.tvCutElement = findViewById(R.id.tvCutElement)
+        this.pictureHolder = findViewById(R.id.picture_holder)
 
         val pullToRefresh: SwipeRefreshLayout = findViewById(R.id.pullToRefresh)
 
@@ -215,52 +233,162 @@ class MainActivity : AppCompatActivity() {
         val token = prefs.getString("token", "")
         if (token != null && token != "") {
             this.uptobox = Uptobox(token, this)
-            this.uptobox?.setOnRequestListener(object : RequestListener {
-                override fun onError(message: String) {
-                    this@MainActivity.runOnUiThread {
-                        this@MainActivity.progressBar!!.visibility = View.INVISIBLE
-                        Toast.makeText(
-                            this@MainActivity,
-                            message,
-                            Toast.LENGTH_LONG
-                        ).show()
-                    }
-                }
-            })
-            this.listFoldersFiles!!.onItemClickListener =
-                AdapterView.OnItemClickListener { parent, view, position, id ->
-                    val selectedItem = parent.getItemAtPosition(position)
 
-                    if (selectedItem is UtbFolder) {
-                        this.reload(selectedItem.fullPath)
-                    } else if (selectedItem is UtbFile) {
-                        if (selectedItem.transcoded != "null") {
-                            this.showAvailableFiles(selectedItem.file_code, selectedItem)
+            this.uptobox!!.getUser {
+                if (it.premium == 1) {
+                    // TODO: Check date premium account
+                    this.uptobox?.setOnRequestListener(object : RequestListener {
+                        override fun onError(message: String) {
+                            this@MainActivity.runOnUiThread {
+                                this@MainActivity.progressBar!!.visibility = View.INVISIBLE
+                                Toast.makeText(
+                                    this@MainActivity,
+                                    message,
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
                         }
+                    })
+                    this.listFoldersFiles!!.onItemClickListener =
+                        AdapterView.OnItemClickListener { parent, view, position, id ->
+                            val selectedItem = parent.getItemAtPosition(position)
+
+                            if (selectedItem is UtbFolder) {
+                                this.reload(selectedItem.fullPath)
+                            } else if (selectedItem is UtbFile) {
+                                if (selectedItem.transcoded != "null") {
+                                    this.showAvailableFiles(selectedItem.file_code, selectedItem)
+                                } else if (selectedItem.isPicture()) {
+                                    this.handleShowImage(selectedItem)
+                                } else {
+                                    val builder = AlertDialog.Builder(this)
+                                    builder.setTitle("Download")
+                                        .setMessage("Do you want to download file?")
+                                        .setIcon(R.drawable.ic_action_download_light)
+                                        .setPositiveButton(
+                                            R.string.dialog_ok
+                                        ) { dialog, id ->
+                                            this.handleDownload(selectedItem)
+                                        }
+                                        .setNegativeButton(
+                                            R.string.dialog_cancel
+                                        ) { dialog, id ->
+                                        }
+                                    builder.create().show()
+                                }
+                            }
+                        }
+
+
+                    if (this.currentFolderOrientation != null) {
+                        this.reload(this.currentFolderOrientation)
+                    } else {
+                        this.reload("//")
                     }
+
+                    val data: Uri? = intent?.data
+
+                    if (data != null) {
+                        val segments = data.path?.split("/")
+                        val key: String = segments?.get(segments.size - 1) ?: ""
+                        val externalFile = UtbFile()
+                        externalFile.file_code = key
+
+                        this.showAvailableFiles(key, externalFile)
+                    }
+                } else {
+                    this.progressBar!!.visibility = View.INVISIBLE
+                    Toast.makeText(this, "Your account is not premium", Toast.LENGTH_LONG).show()
                 }
-
-
-            if (this.currentFolderOrientation != null) {
-                this.reload(this.currentFolderOrientation)
-            } else {
-                this.reload("//")
-            }
-
-            val data: Uri? = intent?.data
-
-            if (data != null) {
-                val segments = data.path?.split("/")
-                val key: String = segments?.get(segments.size - 1) ?: ""
-                val externalFile = UtbFile()
-                externalFile.file_code = key
-
-                this.showAvailableFiles(key, externalFile)
             }
         } else {
             this.progressBar!!.visibility = View.INVISIBLE
             Toast.makeText(this, "Set your Token in settings", Toast.LENGTH_LONG).show()
         }
+    }
+
+    private fun handleDownload(file: UtbFile) {
+        if (file.file_code != null) {
+
+            val notificationManager = NotificationManagerCompat.from(this)
+            val builder = NotificationCompat.Builder(this, "1")
+            builder.setContentTitle("Download ${file.file_name}")
+            builder.setSubText("Download in progress")
+            builder.setSmallIcon(R.drawable.ic_action_download)
+            builder.priority = NotificationCompat.PRIORITY_HIGH
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val channelId = "my_utb_explorer"
+                val channel = NotificationChannel(
+                    channelId,
+                    "Download",
+                    NotificationManager.IMPORTANCE_DEFAULT
+                )
+                notificationManager.createNotificationChannel(channel)
+                builder.setChannelId(channelId)
+            }
+            val progressMax = 100
+            builder.setProgress(progressMax, 0, true)
+            notificationManager.notify(1, builder.build())
+
+            this.uptobox?.downloadFile(file.file_code!!, file.file_name!!, {
+
+                Log.v("Progress", "Complete")
+                builder.setSubText("Download complete").setProgress(0, 0, false)
+                notificationManager.notify(1, builder.build())
+
+            }, { message ->
+                Log.e("Error", "Error $message")
+            }, { downloaded, target ->
+                val percent = downloaded * progressMax / target
+                Log.v("Progress", "$percent")
+                this.runOnUiThread {
+                    builder.setProgress(progressMax, percent.toInt(), false)
+                    notificationManager.notify(1, builder.build())
+                }
+            })
+        }
+    }
+
+    private fun handleShowImage(image: UtbFile) {
+        val fileCode = image.file_code
+        if (fileCode != null) {
+            val files = ArrayList<String>()
+            files.add(Gson().toJson(image.getData()))
+
+            val intent = Intent(this, PictureShowActivity::class.java)
+            intent.putExtra("files", files)
+            startActivity(intent)
+        }
+    }
+
+    private fun handleSendFile(intent: Intent) {
+
+        val documentUri =
+            intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
+        var file: File? = null
+
+        if (documentUri != null) {
+//            file = File(documentUri.toString())
+            file = File(FileUtils.getRealPath(this, documentUri))
+            val builder = AlertDialog.Builder(this)
+            builder.setTitle("Upload")
+            builder.setMessage(R.string.upload_title)
+            builder.setPositiveButton(
+                R.string.dialog_yes
+            ) { dialog, id ->
+                this.uptobox?.uploadFile(file) {
+                    if (it) {
+
+                    }
+                }
+            }
+            builder.setNegativeButton(
+                R.string.dialog_no
+            ) { dialog, id -> }
+            builder.create().show()
+        }
+
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -303,6 +431,7 @@ class MainActivity : AppCompatActivity() {
                     val listFolder = it.folders!!.toCollection(ArrayList())
                     val listFile = it.files!!.toCollection(ArrayList())
 
+                    this.utbCurrentFolder = it
                     this.currentFolder = it.currentFolder
                     this.runOnUiThread {
                         if (this.currentFolder!!.fld_id != "0") {
@@ -444,7 +573,9 @@ class MainActivity : AppCompatActivity() {
 
     override fun onBackPressed() {
 
-        if (this.currentFolder != null && this.currentFolder!!.fld_id != "0") {
+        if (this.pictureHolder?.visibility == View.VISIBLE) {
+            super.onBackPressed()
+        } else if (this.currentFolder != null && this.currentFolder!!.fld_id != "0") {
 
             val position = this.currentFolder!!.fld_name!!.lastIndexOf("/")
 
@@ -506,9 +637,9 @@ class MainActivity : AppCompatActivity() {
                     this.runOnUiThread {
                         if (it != null && it != "") {
                             ivPreview.visibility = View.VISIBLE
-                            Glide.with(mView)
-                                .load(it)
-                                .diskCacheStrategy(DiskCacheStrategy.ALL)
+                            val picasso = Picasso.get()
+                            picasso.setIndicatorsEnabled(true)
+                            picasso.load(it)
                                 .into(ivPreview)
                         } else {
                             ivPreview.visibility = View.GONE
@@ -877,6 +1008,23 @@ class MainActivity : AppCompatActivity() {
                             } else if (utb is UtbFile) {
                                 if (utb.transcoded != "null") {
                                     this.showAvailableFiles(utb.file_code, utb)
+                                } else if (utb.isPicture()) {
+                                    this.handleShowImage(utb)
+                                } else {
+                                    AlertDialog.Builder(this)
+                                        .setTitle("Download")
+                                        .setMessage("Do you want to download file?")
+                                        .setIcon(R.drawable.ic_action_download_light)
+                                        .setPositiveButton(
+                                            R.string.dialog_ok
+                                        ) { dialog, id ->
+                                            this.handleDownload(utb)
+                                        }
+                                        .setNegativeButton(
+                                            R.string.dialog_cancel
+                                        ) { dialog, id ->
+                                        }
+                                        .create().show()
                                 }
                             }
 

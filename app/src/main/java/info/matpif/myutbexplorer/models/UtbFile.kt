@@ -1,6 +1,6 @@
 package info.matpif.myutbexplorer.models
 
-class UtbFile: UtbModel() {
+class UtbFile : UtbModel() {
 
     data class DataUtbFile(
         var file_code: String? = null,
@@ -62,6 +62,14 @@ class UtbFile: UtbModel() {
         this.transcoded = data.transcoded
 
         return this
+    }
+
+    fun isPicture(): Boolean {
+        return this.file_name!!.endsWith(".jpg", true)
+                || this.file_name!!.endsWith(".jpeg", true)
+                || this.file_name!!.endsWith(".png", true)
+                || this.file_name!!.endsWith(".bmp", true)
+                || this.file_name!!.endsWith(".gif", true)
     }
 
     override fun toString(): String {

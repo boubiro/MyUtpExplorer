@@ -24,10 +24,12 @@ import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
 import com.google.android.exoplayer2.util.MimeTypes
 import com.google.android.exoplayer2.util.Util
 import com.google.gson.Gson
+import info.matpif.myutbexplorer.helpers.MyHelper
 import info.matpif.myutbexplorer.models.UtbFile
 import info.matpif.myutbexplorer.models.UtbSubTitle
 import info.matpif.myutbexplorer.services.Uptobox
 import org.json.JSONArray
+import pl.droidsonroids.casty.Casty
 
 
 class Stream2Activity : AppCompatActivity() {
@@ -42,6 +44,7 @@ class Stream2Activity : AppCompatActivity() {
     private var currentSubtitles: Array<UtbSubTitle>? = null
     private var subtitleButton: ImageButton? = null
     private var controllerExoView: PlayerControlView? = null
+    private var casty: Casty? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -110,9 +113,17 @@ class Stream2Activity : AppCompatActivity() {
                                 this.selectSubtitle(this.currentSubtitles!![which - 1])
                             }
                         }
+                        .setCancelable(false)
                     builder.create().show()
                 }
             }
+        }
+
+
+        val myHelper = MyHelper(this)
+
+        if (!myHelper.isTV()) {
+            // Casty
         }
     }
 
@@ -205,7 +216,6 @@ class Stream2Activity : AppCompatActivity() {
         }
     }
 
-    @SuppressLint("InlinedApi")
     private fun hideSystemUi() {
         this.playerView!!.systemUiVisibility = (View.SYSTEM_UI_FLAG_LOW_PROFILE
                 or View.SYSTEM_UI_FLAG_FULLSCREEN

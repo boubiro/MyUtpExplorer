@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000"
+    tools:context=".PictureShowFragment">
+
+    <com.github.chrisbanes.photoview.PhotoView
+        android:id="@+id/picture_holder"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"/>
+
+    <TextView
+        android:id="@+id/tvImageName"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingTop="?attr/dialogPreferredPadding"
+        android:textAlignment="center"
+        android:textColor="#FFFFFF" />
+</FrameLayout>
