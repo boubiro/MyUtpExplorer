@@ -69,13 +69,6 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        val action = intent.action
-        val type = intent.type
-
-        if (Intent.ACTION_SEND == action && type != null) {
-            this.handleSendFile(intent)
-        }
-
         if (savedInstanceState != null) {
             this.currentFolderOrientation = savedInstanceState.getString("currentPath")
         }
@@ -312,6 +305,16 @@ class MainActivity : AppCompatActivity() {
         } else {
             this.progressBar!!.visibility = View.INVISIBLE
             Toast.makeText(this, "Set your Token in settings", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        val action = intent.action
+        val type = intent.type
+
+        if (Intent.ACTION_SEND == action && type != null) {
+            this.handleSendFile(intent)
         }
     }
 

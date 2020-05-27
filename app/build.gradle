@@ -13,7 +13,7 @@ android {
         applicationId "info.matpif.myutbexplorer"
         minSdkVersion 23
         targetSdkVersion 29
-        versionCode 73
+        versionCode 74
         versionName "1.7.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         setProperty("archivesBaseName", "MyUtbExplorer-$versionName-$versionCode")
