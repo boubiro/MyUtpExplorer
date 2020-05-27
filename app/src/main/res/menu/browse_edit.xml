@@ -4,6 +4,12 @@
 
 
     <item
+        android:id="@+id/download"
+        android:icon="@drawable/ic_action_download"
+        android:title="@string/menu_download"
+        app:showAsAction="always" />
+
+    <item
         android:id="@+id/cut"
         android:icon="@drawable/ic_action_cut"
         android:title="@string/menu_cut"
@@ -12,7 +18,7 @@
     <item
         android:id="@+id/share"
         android:icon="@drawable/ic_action_share"
-        android:title="@string/menu_cut"
+        android:title="@string/menu_share"
         app:showAsAction="ifRoom" />
 
     <item

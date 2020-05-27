@@ -19,10 +19,12 @@
 
     <!-- Menu Selection -->
     <string name="menu_cut">Cut</string>
+    <string name="menu_share">Share</string>
     <string name="menu_edit">Edit</string>
     <string name="menu_delete">Delete</string>
     <string name="paste">Paste here</string>
     <string name="cancel_paste">Cancel paste</string>
+    <string name="menu_download">Download</string>
 
     <!-- Dialogs -->
     <string name="edit_file">Edit File</string>

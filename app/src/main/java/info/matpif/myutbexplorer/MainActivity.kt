@@ -42,6 +42,9 @@ import info.matpif.myutbexplorer.services.Uptobox
 import pl.droidsonroids.casty.Casty
 import pl.droidsonroids.casty.MediaData
 import java.io.File
+import java.util.*
+import kotlin.collections.ArrayList
+import kotlin.concurrent.schedule
 
 
 class MainActivity : AppCompatActivity() {
@@ -140,6 +143,7 @@ class MainActivity : AppCompatActivity() {
                 private var itemEdit: MenuItem? = null
                 private var itemDelete: MenuItem? = null
                 private var itemShare: MenuItem? = null
+                private var itemDownload: MenuItem? = null
 
                 override fun onItemCheckedStateChanged(
                     mode: ActionMode, position: Int,
@@ -150,9 +154,14 @@ class MainActivity : AppCompatActivity() {
                     if (this@MainActivity.adapter?.getSelectedItem()?.size!! > 1) {
                         this.itemEdit?.isVisible = false
                         this.itemShare?.isVisible = false
+                        this.itemDownload?.isVisible = false
                     } else {
                         this.itemEdit?.isVisible = true
                         this.itemShare?.isVisible = true
+                        this@MainActivity.adapter?.getSelectedItem()?.forEach {
+                            val utb = this@MainActivity.adapter?.getItem(it.key)
+                            this.itemDownload?.isVisible = utb is UtbFile
+                        }
                     }
                 }
 
@@ -194,6 +203,18 @@ class MainActivity : AppCompatActivity() {
                             mode.finish()
                             true
                         }
+                        R.id.download -> {
+                            if (this@MainActivity.adapter?.getSelectedItem()?.size == 1) {
+                                this@MainActivity.adapter?.getSelectedItem()?.forEach {
+                                    val utb = this@MainActivity.adapter?.getItem(it.key)
+                                    if (utb is UtbFile) {
+                                        this@MainActivity.handleDownload(utb)
+                                    }
+                                }
+                            }
+                            mode.finish()
+                            true
+                        }
                         else -> false
                     }
                 }
@@ -205,6 +226,7 @@ class MainActivity : AppCompatActivity() {
                     this.itemEdit = menu.findItem(R.id.edit)
                     this.itemDelete = menu.findItem(R.id.delete)
                     this.itemShare = menu.findItem(R.id.share)
+                    this.itemDownload = menu.findItem(R.id.download)
 
                     this.isCut = false
                     this@MainActivity.adapter?.removeAllSelectedItem()
@@ -261,24 +283,10 @@ class MainActivity : AppCompatActivity() {
                                 } else if (selectedItem.isPicture()) {
                                     this.handleShowImage(selectedItem)
                                 } else {
-                                    val builder = AlertDialog.Builder(this)
-                                    builder.setTitle("Download")
-                                        .setMessage("Do you want to download file?")
-                                        .setIcon(R.drawable.ic_action_download_light)
-                                        .setPositiveButton(
-                                            R.string.dialog_ok
-                                        ) { dialog, id ->
-                                            this.handleDownload(selectedItem)
-                                        }
-                                        .setNegativeButton(
-                                            R.string.dialog_cancel
-                                        ) { dialog, id ->
-                                        }
-                                    builder.create().show()
+                                    this.handleDownload(selectedItem)
                                 }
                             }
                         }
-
 
                     if (this.currentFolderOrientation != null) {
                         this.reload(this.currentFolderOrientation)
@@ -310,43 +318,56 @@ class MainActivity : AppCompatActivity() {
     private fun handleDownload(file: UtbFile) {
         if (file.file_code != null) {
 
-            val notificationManager = NotificationManagerCompat.from(this)
-            val builder = NotificationCompat.Builder(this, "1")
-            builder.setContentTitle("Download ${file.file_name}")
-            builder.setSubText("Download in progress")
-            builder.setSmallIcon(R.drawable.ic_action_download)
-            builder.priority = NotificationCompat.PRIORITY_HIGH
+            AlertDialog.Builder(this)
+                .setTitle("Download")
+                .setMessage("Do you want to download file?")
+                .setIcon(R.drawable.ic_action_download_light)
+                .setPositiveButton(
+                    R.string.dialog_ok
+                ) { dialog, id ->
+                    val notificationManager = NotificationManagerCompat.from(this)
+                    val builder = NotificationCompat.Builder(this, "1")
+                    builder.setContentTitle("Download ${file.file_name}")
+                    builder.setSubText("Download in progress")
+                    builder.setSmallIcon(R.drawable.ic_action_download)
+                    builder.priority = NotificationCompat.PRIORITY_LOW
+                    builder.setSound(null)
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val channelId = "my_utb_explorer"
-                val channel = NotificationChannel(
-                    channelId,
-                    "Download",
-                    NotificationManager.IMPORTANCE_DEFAULT
-                )
-                notificationManager.createNotificationChannel(channel)
-                builder.setChannelId(channelId)
-            }
-            val progressMax = 100
-            builder.setProgress(progressMax, 0, true)
-            notificationManager.notify(1, builder.build())
-
-            this.uptobox?.downloadFile(file.file_code!!, file.file_name!!, {
-
-                Log.v("Progress", "Complete")
-                builder.setSubText("Download complete").setProgress(0, 0, false)
-                notificationManager.notify(1, builder.build())
-
-            }, { message ->
-                Log.e("Error", "Error $message")
-            }, { downloaded, target ->
-                val percent = downloaded * progressMax / target
-                Log.v("Progress", "$percent")
-                this.runOnUiThread {
-                    builder.setProgress(progressMax, percent.toInt(), false)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        val channelId = "my_utb_explorer"
+                        val channel = NotificationChannel(
+                            channelId,
+                            "Download",
+                            NotificationManager.IMPORTANCE_LOW
+                        )
+                        channel.setSound(null, null)
+                        notificationManager.createNotificationChannel(channel)
+                        builder.setChannelId(channelId)
+                    }
+                    val progressMax = 100
+                    builder.setProgress(progressMax, 0, true)
                     notificationManager.notify(1, builder.build())
+
+                    this.uptobox?.downloadFile(file.file_code!!, file.file_name!!, {
+                        Timer().schedule(1000) {
+                            builder.setSubText("Download complete").setProgress(0, 0, false)
+                            notificationManager.notify(1, builder.build())
+                        }
+                    }, { message ->
+                        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+                        builder.setSubText("Download on error").setProgress(0, 0, false)
+                        notificationManager.notify(1, builder.build())
+                    }, { downloaded, target ->
+                        val percent = downloaded * progressMax / target
+                        builder.setProgress(progressMax, percent.toInt(), false)
+                        notificationManager.notify(1, builder.build())
+                    })
                 }
-            })
+                .setNegativeButton(
+                    R.string.dialog_cancel
+                ) { dialog, id ->
+                }
+                .create().show()
         }
     }
 
@@ -372,15 +393,43 @@ class MainActivity : AppCompatActivity() {
 //            file = File(documentUri.toString())
             file = File(FileUtils.getRealPath(this, documentUri))
             val builder = AlertDialog.Builder(this)
+
             builder.setTitle("Upload")
+            builder.setIcon(R.drawable.ic_action_upload_light)
             builder.setMessage(R.string.upload_title)
             builder.setPositiveButton(
                 R.string.dialog_yes
             ) { dialog, id ->
+
+                val notificationManager = NotificationManagerCompat.from(this)
+                val builderNotification = NotificationCompat.Builder(this, "1")
+                builderNotification.setContentTitle("Upload ${file.name}")
+                builderNotification.setSubText("Upload in progress")
+                builderNotification.setSmallIcon(R.drawable.ic_action_upload)
+                builderNotification.priority = NotificationCompat.PRIORITY_LOW
+                builderNotification.setSound(null)
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    val channelId = "my_utb_explorer"
+                    val channel = NotificationChannel(
+                        channelId,
+                        "Upload",
+                        NotificationManager.IMPORTANCE_LOW
+                    )
+                    channel.setSound(null, null)
+                    notificationManager.createNotificationChannel(channel)
+                    builderNotification.setChannelId(channelId)
+                }
+                builderNotification.setProgress(0, 0, true)
+                notificationManager.notify(2, builderNotification.build())
+
                 this.uptobox?.uploadFile(file) {
                     if (it) {
-
+                        builderNotification.setSubText("Upload complete")
+                        builderNotification.setProgress(0, 0, false)
+                        notificationManager.notify(2, builderNotification.build())
                     }
+                    this.reloadCurrentPath()
                 }
             }
             builder.setNegativeButton(
@@ -1011,20 +1060,7 @@ class MainActivity : AppCompatActivity() {
                                 } else if (utb.isPicture()) {
                                     this.handleShowImage(utb)
                                 } else {
-                                    AlertDialog.Builder(this)
-                                        .setTitle("Download")
-                                        .setMessage("Do you want to download file?")
-                                        .setIcon(R.drawable.ic_action_download_light)
-                                        .setPositiveButton(
-                                            R.string.dialog_ok
-                                        ) { dialog, id ->
-                                            this.handleDownload(utb)
-                                        }
-                                        .setNegativeButton(
-                                            R.string.dialog_cancel
-                                        ) { dialog, id ->
-                                        }
-                                        .create().show()
+                                    this.handleDownload(utb)
                                 }
                             }
 
