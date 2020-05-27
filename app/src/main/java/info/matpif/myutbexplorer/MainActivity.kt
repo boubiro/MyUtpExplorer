@@ -1,9 +1,11 @@
 package info.matpif.myutbexplorer
 
+import android.Manifest
 import android.app.AlertDialog
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -14,6 +16,7 @@ import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.collection.ArrayMap
 import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.ShareCompat
@@ -71,6 +74,13 @@ class MainActivity : AppCompatActivity() {
 
         if (savedInstanceState != null) {
             this.currentFolderOrientation = savedInstanceState.getString("currentPath")
+        }
+
+        val action = intent.action
+        val type = intent.type
+
+        if (Intent.ACTION_SEND == action && type != null) {
+            this.handleSendFile(intent)
         }
 
         val myHelper = MyHelper(this)
@@ -308,17 +318,19 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    override fun onResume() {
-        super.onResume()
-        val action = intent.action
-        val type = intent.type
-
-        if (Intent.ACTION_SEND == action && type != null) {
-            this.handleSendFile(intent)
-        }
-    }
-
     private fun handleDownload(file: UtbFile) {
+        if (ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            if (shouldShowRequestPermissionRationale(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
+                val permissions: Array<String> = Array(1) { "" }
+                permissions[0] = Manifest.permission.WRITE_EXTERNAL_STORAGE
+
+                requestPermissions(permissions, 0);
+            }
+        }
         if (file.file_code != null) {
 
             AlertDialog.Builder(this)
@@ -387,6 +399,19 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleSendFile(intent: Intent) {
+
+        if (ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.READ_EXTERNAL_STORAGE
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            if (shouldShowRequestPermissionRationale(Manifest.permission.READ_EXTERNAL_STORAGE)) {
+                val permissions: Array<String> = Array(1) { "" }
+                permissions[0] = Manifest.permission.READ_EXTERNAL_STORAGE
+
+                requestPermissions(permissions, 0);
+            }
+        }
 
         val documentUri =
             intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
