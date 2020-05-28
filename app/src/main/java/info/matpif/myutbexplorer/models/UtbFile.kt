@@ -14,7 +14,8 @@ class UtbFile : UtbModel() {
         var file_size: Int? = null,
         var last_stream: String? = null,
         var nb_stream: Int? = null,
-        var transcoded: String? = null
+        var transcoded: String? = null,
+        var available_uts: Boolean? = null
     )
 
     var file_code: String? = null
@@ -29,6 +30,7 @@ class UtbFile : UtbModel() {
     var last_stream: String? = null
     var nb_stream: Int? = null
     var transcoded: String? = null
+    var available_uts: Boolean? = null
 
     fun getData(): DataUtbFile {
         return DataUtbFile(
@@ -43,7 +45,8 @@ class UtbFile : UtbModel() {
             this.file_size,
             this.last_stream,
             this.nb_stream,
-            this.transcoded
+            this.transcoded,
+            this.available_uts
         )
     }
 
@@ -60,6 +63,7 @@ class UtbFile : UtbModel() {
         this.last_stream = data.last_stream
         this.nb_stream = data.nb_stream
         this.transcoded = data.transcoded
+        this.available_uts = data.available_uts
 
         return this
     }

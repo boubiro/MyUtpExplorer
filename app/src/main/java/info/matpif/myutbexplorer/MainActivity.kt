@@ -300,12 +300,13 @@ class MainActivity : AppCompatActivity() {
                     val data: Uri? = intent?.data
 
                     if (data != null) {
-                        val segments = data.path?.split("/")
-                        val key: String = segments?.get(segments.size - 1) ?: ""
-                        val externalFile = UtbFile()
-                        externalFile.file_code = key
-
-                        this.showAvailableFiles(key, externalFile)
+//                        val segments = data.path?.split("/")
+//                        val key: String = segments?.get(segments.size - 1) ?: ""
+//                        val externalFile = UtbFile()
+//                        externalFile.file_code = key
+//
+//                        this.showAvailableFiles(key, externalFile)
+                        this.handleExternalFile(data)
                     }
                 } else {
                     this.progressBar!!.visibility = View.INVISIBLE
@@ -315,6 +316,33 @@ class MainActivity : AppCompatActivity() {
         } else {
             this.progressBar!!.visibility = View.INVISIBLE
             Toast.makeText(this, "Set your Token in settings", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun handleExternalFile(url: Uri) {
+        val segments = url.path?.split("/")
+        val fileCode: String = segments?.get(segments.size - 1) ?: ""
+
+        this.uptobox?.getFile(fileCode) { externalFile ->
+            var buttons: Array<String>? = null
+            if (url.host == "uptobox.com" && externalFile.available_uts == false) {
+                this.handleDownload(externalFile)
+            } else if (url.host == "uptostream.com" || externalFile.available_uts == true) {
+                buttons = Array(2) { "" }
+                buttons[0] = "Download"
+                buttons[1] = "Play"
+
+                this.createDialogChoose(buttons) {
+                    when (it) {
+                        0 -> {
+                            this.handleDownload(externalFile)
+                        }
+                        1 -> {
+                            this.showAvailableFiles(externalFile.file_code, externalFile)
+                        }
+                    }
+                }
+            }
         }
     }
 

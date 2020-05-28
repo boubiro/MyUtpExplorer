@@ -594,6 +594,21 @@ class Uptobox(_token: String, _context: Context) {
         }
     }
 
+    fun getFile(file_code: String, listener: (UtbFile) -> Unit) {
+        request.getRequest(
+            "/link/info", listOf("fileCodes" to file_code)
+        ) { utbResponse ->
+            val data = JSONObject(utbResponse.data?.getJSONArray("list")?.get(0)?.toString())
+            val utbFile = UtbFile()
+            utbFile.file_code = data.getString("file_code")
+            utbFile.file_name = data.getString("file_name")
+            utbFile.file_size = data.getInt("file_size")
+            utbFile.available_uts = data.getBoolean("available_uts")
+
+            listener.invoke(utbFile)
+        }
+    }
+
     fun setOnRequestListener(requestListener: RequestListener) {
         this.request.setOnRequestListener(requestListener)
     }
