@@ -2,15 +2,17 @@ package info.matpif.myutbexplorer
 
 import android.Manifest
 import android.app.AlertDialog
+import android.app.DownloadManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import android.text.TextUtils
-import android.util.Log
 import android.view.*
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
@@ -31,6 +33,7 @@ import com.google.gson.Gson
 import com.squareup.picasso.Picasso
 import info.matpif.myutbexplorer.adapters.ListFavorite
 import info.matpif.myutbexplorer.adapters.ListItemFoldersFiles
+import info.matpif.myutbexplorer.entities.DownloadUploadManager
 import info.matpif.myutbexplorer.entities.UtbAttributes
 import info.matpif.myutbexplorer.entities.databases.AppDatabase
 import info.matpif.myutbexplorer.helpers.FileUtils
@@ -45,9 +48,11 @@ import info.matpif.myutbexplorer.services.Uptobox
 import pl.droidsonroids.casty.Casty
 import pl.droidsonroids.casty.MediaData
 import java.io.File
+import java.text.SimpleDateFormat
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import java.util.*
 import kotlin.collections.ArrayList
-import kotlin.concurrent.schedule
 
 
 class MainActivity : AppCompatActivity() {
@@ -157,13 +162,15 @@ class MainActivity : AppCompatActivity() {
                     if (this@MainActivity.adapter?.getSelectedItem()?.size!! > 1) {
                         this.itemEdit?.isVisible = false
                         this.itemShare?.isVisible = false
-                        this.itemDownload?.isVisible = false
                     } else {
                         this.itemEdit?.isVisible = true
                         this.itemShare?.isVisible = true
+                        this.itemDownload?.isVisible = true
                         this@MainActivity.adapter?.getSelectedItem()?.forEach {
                             val utb = this@MainActivity.adapter?.getItem(it.key)
-                            this.itemDownload?.isVisible = utb is UtbFile
+                            if (utb is UtbFolder) {
+                                this.itemDownload?.isVisible = false
+                            }
                         }
                     }
                 }
@@ -207,7 +214,7 @@ class MainActivity : AppCompatActivity() {
                             true
                         }
                         R.id.download -> {
-                            if (this@MainActivity.adapter?.getSelectedItem()?.size == 1) {
+                            if (this@MainActivity.adapter?.getSelectedItem()?.size!! > 0) {
                                 this@MainActivity.adapter?.getSelectedItem()?.forEach {
                                     val utb = this@MainActivity.adapter?.getItem(it.key)
                                     if (utb is UtbFile) {
@@ -300,12 +307,6 @@ class MainActivity : AppCompatActivity() {
                     val data: Uri? = intent?.data
 
                     if (data != null) {
-//                        val segments = data.path?.split("/")
-//                        val key: String = segments?.get(segments.size - 1) ?: ""
-//                        val externalFile = UtbFile()
-//                        externalFile.file_code = key
-//
-//                        this.showAvailableFiles(key, externalFile)
                         this.handleExternalFile(data)
                     }
                 } else {
@@ -363,48 +364,45 @@ class MainActivity : AppCompatActivity() {
 
             AlertDialog.Builder(this)
                 .setTitle("Download")
-                .setMessage("Do you want to download file?")
+                .setMessage("Do you want to download file (${file.file_name})?")
                 .setIcon(R.drawable.ic_action_download_light)
                 .setPositiveButton(
                     R.string.dialog_ok
                 ) { dialog, id ->
-                    val notificationManager = NotificationManagerCompat.from(this)
-                    val builder = NotificationCompat.Builder(this, "1")
-                    builder.setContentTitle("Download ${file.file_name}")
-                    builder.setSubText("Download in progress")
-                    builder.setSmallIcon(R.drawable.ic_action_download)
-                    builder.priority = NotificationCompat.PRIORITY_LOW
-                    builder.setSound(null)
 
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        val channelId = "my_utb_explorer"
-                        val channel = NotificationChannel(
-                            channelId,
-                            "Download",
-                            NotificationManager.IMPORTANCE_LOW
-                        )
-                        channel.setSound(null, null)
-                        notificationManager.createNotificationChannel(channel)
-                        builder.setChannelId(channelId)
+                    val targetFile =
+                        File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/${file.file_name}")
+                    this.uptobox?.getDirectDownloadLink(file.file_code!!) { url ->
+                        val request: DownloadManager.Request =
+                            DownloadManager.Request(Uri.parse(url))
+                                .setTitle(file.file_name)
+                                .setDescription("Downloading")
+                                .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                                .setDestinationUri(Uri.fromFile(targetFile))
+//                                .setRequiresCharging(false) // Set if charging is required to begin the download (API 24 MIN)
+                                .setAllowedOverMetered(true)
+                                .setAllowedOverRoaming(true)
+
+                        val downloadManager =
+                            getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+                        val requestId = downloadManager.enqueue(request)
+
+                        Thread(Runnable {
+                            val sdf = SimpleDateFormat("yyyy/MM/dd hh:mm:ss")
+                            val currentDate = sdf.format(Date())
+                            val downloadUploadManager =
+                                DownloadUploadManager(
+                                    0,
+                                    requestId,
+                                    file.file_name,
+                                    0,
+                                    true,
+                                    currentDate
+                                )
+                            AppDatabase.getDatabase(this)
+                                .downloadUploadManagerDao().insert(downloadUploadManager)
+                        }).start()
                     }
-                    val progressMax = 100
-                    builder.setProgress(progressMax, 0, true)
-                    notificationManager.notify(1, builder.build())
-
-                    this.uptobox?.downloadFile(file.file_code!!, file.file_name!!, {
-                        Timer().schedule(1000) {
-                            builder.setSubText("Download complete").setProgress(0, 0, false)
-                            notificationManager.notify(1, builder.build())
-                        }
-                    }, { message ->
-                        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
-                        builder.setSubText("Download on error").setProgress(0, 0, false)
-                        notificationManager.notify(1, builder.build())
-                    }, { downloaded, target ->
-                        val percent = downloaded * progressMax / target
-                        builder.setProgress(progressMax, percent.toInt(), false)
-                        notificationManager.notify(1, builder.build())
-                    })
                 }
                 .setNegativeButton(
                     R.string.dialog_cancel
@@ -433,7 +431,7 @@ class MainActivity : AppCompatActivity() {
                 Manifest.permission.READ_EXTERNAL_STORAGE
             ) != PackageManager.PERMISSION_GRANTED
         ) {
-            if (shouldShowRequestPermissionRationale(Manifest.permission.READ_EXTERNAL_STORAGE)) {
+            if (!shouldShowRequestPermissionRationale(Manifest.permission.READ_EXTERNAL_STORAGE)) {
                 val permissions: Array<String> = Array(1) { "" }
                 permissions[0] = Manifest.permission.READ_EXTERNAL_STORAGE
 
@@ -479,16 +477,46 @@ class MainActivity : AppCompatActivity() {
                 builderNotification.setProgress(0, 0, true)
                 notificationManager.notify(2, builderNotification.build())
 
-                this.uptobox?.uploadFile(file) {
-                    if (it) {
-                        builderNotification.setSubText("Upload complete")
-                    } else {
+                val sdf = SimpleDateFormat("yyyy/MM/dd hh:mm:ss")
+                val currentDate = sdf.format(Date())
+                val downloadManager = DownloadUploadManager(
+                    0,
+                    0,
+                    file.name,
+                    2,
+                    false,
+                    currentDate
+                )
+
+                Thread(Runnable {
+                    downloadManager.uid = AppDatabase.getDatabase(this).downloadUploadManagerDao()
+                        .insert(downloadManager).toInt()
+                    this.uptobox?.uploadFile(file, {
+                        if (it) {
+                            builderNotification.setSubText("Upload complete")
+                            downloadManager.progress = 8
+                        } else {
+                            builderNotification.setSubText("Upload error")
+                            downloadManager.progress = 16
+                        }
+
+                        AppDatabase.getDatabase(this).downloadUploadManagerDao()
+                            .insert(downloadManager)
+
+                        builderNotification.setProgress(0, 0, false)
+                        notificationManager.notify(2, builderNotification.build())
+                        this.reloadCurrentPath()
+                    }, { message ->
                         builderNotification.setSubText("Upload error")
-                    }
-                    builderNotification.setProgress(0, 0, false)
-                    notificationManager.notify(2, builderNotification.build())
-                    this.reloadCurrentPath()
-                }
+                        downloadManager.progress = 16
+
+                        builderNotification.setProgress(0, 0, false)
+                        notificationManager.notify(2, builderNotification.build())
+
+                        AppDatabase.getDatabase(this).downloadUploadManagerDao()
+                            .insert(downloadManager)
+                    })
+                }).start()
             }
             builder.setNegativeButton(
                 R.string.dialog_no
@@ -1036,6 +1064,12 @@ class MainActivity : AppCompatActivity() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
+            R.id.downloadUploadManager -> {
+                val intent =
+                    Intent(this, info.matpif.myutbexplorer.DownloadUploadManager::class.java)
+                startActivity(intent)
+                true
+            }
             R.id.settings -> {
                 val intent = Intent(this, SettingsActivity::class.java)
                 startActivity(intent)

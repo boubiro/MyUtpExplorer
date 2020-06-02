@@ -21,6 +21,12 @@
         app:showAsAction="ifRoom" />
 
     <item
+        android:id="@+id/downloadUploadManager"
+        android:icon="@drawable/ic_action_download_upload_manager"
+        android:title="@string/menu_download_upload_manager"
+        app:showAsAction="ifRoom" />
+
+    <item
         android:id="@+id/settings"
         android:icon="@drawable/ic_action_settings"
         android:title="@string/menu_settings"

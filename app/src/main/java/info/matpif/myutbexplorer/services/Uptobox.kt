@@ -501,17 +501,19 @@ class Uptobox(_token: String, _context: Context) {
         }
     }
 
-    fun uploadFile(file: File, listener: (Boolean) -> Unit) {
+    fun uploadFile(file: File, listener: (Boolean) -> Unit, error: (String?) -> Unit) {
         request.getRequest(
             "/upload", listOf("token" to this.token)
         ) {
             val url = it.data?.getString("uploadLink")
             if (url != null) {
-                request.postFile("$SCHEMA:$url", file) { response ->
+                request.postFile("$SCHEMA:$url", file, { response ->
 
                     val files = response.getJSONArray("files")
                     listener.invoke(files.length() == 1)
-                }
+                }, { message ->
+                    error.invoke(message)
+                })
             } else {
                 listener.invoke(false)
             }

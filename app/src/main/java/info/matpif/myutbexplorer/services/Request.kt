@@ -213,7 +213,8 @@ class Request(
     fun postFile(
         urlUploadFile: String,
         file: File,
-        listener: (JSONObject) -> Unit
+        listener: (JSONObject) -> Unit,
+        error: (String?) -> Unit
     ) = Thread(Runnable {
         val client = OkHttpClient()
         val url = URL(urlUploadFile)
@@ -256,6 +257,7 @@ class Request(
             if (this.requestListener != null) {
                 this.requestListener!!.onError(ex.message!!)
             }
+            error.invoke(ex.message)
         }
     }).start()
 
