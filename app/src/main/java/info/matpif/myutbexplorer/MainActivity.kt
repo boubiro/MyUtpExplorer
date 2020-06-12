@@ -22,6 +22,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.ShareCompat
+import androidx.core.view.marginBottom
 import androidx.preference.PreferenceManager
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.google.android.gms.cast.MediaInfo
@@ -45,6 +46,7 @@ import info.matpif.myutbexplorer.models.UtbFolder
 import info.matpif.myutbexplorer.models.UtbModel
 import info.matpif.myutbexplorer.services.RequestListener
 import info.matpif.myutbexplorer.services.Uptobox
+import org.json.JSONObject
 import pl.droidsonroids.casty.Casty
 import pl.droidsonroids.casty.MediaData
 import java.io.File
@@ -264,7 +266,7 @@ class MainActivity : AppCompatActivity() {
         val prefs = PreferenceManager.getDefaultSharedPreferences(this)
         val token = prefs.getString("token", "")
         if (token != null && token != "") {
-            this.uptobox = Uptobox(token, this)
+            this.uptobox = Uptobox.getInstance(token, this)
 
             this.uptobox!!.getUser {
                 if (it.premium == 1) {
@@ -305,9 +307,13 @@ class MainActivity : AppCompatActivity() {
                     }
 
                     val data: Uri? = intent?.data
-
                     if (data != null) {
                         this.handleExternalFile(data)
+                    }
+
+                    val fileCode = intent.getStringExtra("fileCode")
+                    if (fileCode != null) {
+                        this.handleExternalFile(fileCode)
                     }
                 } else {
                     this.progressBar!!.visibility = View.INVISIBLE
@@ -323,12 +329,19 @@ class MainActivity : AppCompatActivity() {
     private fun handleExternalFile(url: Uri) {
         val segments = url.path?.split("/")
         val fileCode: String = segments?.get(segments.size - 1) ?: ""
+        this.handleExternalFile(fileCode)
+    }
 
+    private fun handleExternalFile(fileCode: String) {
         this.uptobox?.getFile(fileCode) { externalFile ->
             var buttons: Array<String>? = null
-            if (url.host == "uptobox.com" && externalFile.available_uts == false) {
-                this.handleDownload(externalFile)
-            } else if (url.host == "uptostream.com" || externalFile.available_uts == true) {
+            if (externalFile.available_uts == false) {
+                if (externalFile.isPicture()) {
+                    this.handleShowImage(externalFile)
+                } else {
+                    this.handleDownload(externalFile)
+                }
+            } else if (externalFile.available_uts == true) {
                 buttons = Array(2) { "" }
                 buttons[0] = "Download"
                 buttons[1] = "Play"
@@ -348,79 +361,85 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleDownload(file: UtbFile) {
-        if (ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            if (shouldShowRequestPermissionRationale(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
-                val permissions: Array<String> = Array(1) { "" }
-                permissions[0] = Manifest.permission.WRITE_EXTERNAL_STORAGE
+        runOnUiThread {
+            if (ActivityCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                if (shouldShowRequestPermissionRationale(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
+                    val permissions: Array<String> = Array(1) { "" }
+                    permissions[0] = Manifest.permission.WRITE_EXTERNAL_STORAGE
 
-                requestPermissions(permissions, 0);
+                    requestPermissions(permissions, 0);
+                }
             }
-        }
-        if (file.file_code != null) {
+            if (file.file_code != null) {
 
-            AlertDialog.Builder(this)
-                .setTitle("Download")
-                .setMessage("Do you want to download file (${file.file_name})?")
-                .setIcon(R.drawable.ic_action_download_light)
-                .setPositiveButton(
-                    R.string.dialog_ok
-                ) { dialog, id ->
+                AlertDialog.Builder(this)
+                    .setTitle("Download")
+                    .setMessage("Do you want to download file (${file.file_name})?")
+                    .setIcon(R.drawable.ic_action_download_light)
+                    .setPositiveButton(
+                        R.string.dialog_ok
+                    ) { dialog, id ->
 
-                    val targetFile =
-                        File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/${file.file_name}")
-                    this.uptobox?.getDirectDownloadLink(file.file_code!!) { url ->
-                        val request: DownloadManager.Request =
-                            DownloadManager.Request(Uri.parse(url))
-                                .setTitle(file.file_name)
-                                .setDescription("Downloading")
-                                .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                                .setDestinationUri(Uri.fromFile(targetFile))
+                        val targetFile =
+                            File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/${file.file_name}")
+                        this.uptobox?.getDirectDownloadLink(file.file_code!!) { url ->
+                            val request: DownloadManager.Request =
+                                DownloadManager.Request(Uri.parse(url))
+                                    .setTitle(file.file_name)
+                                    .setDescription("Downloading")
+                                    .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                                    .setDestinationUri(Uri.fromFile(targetFile))
 //                                .setRequiresCharging(false) // Set if charging is required to begin the download (API 24 MIN)
-                                .setAllowedOverMetered(true)
-                                .setAllowedOverRoaming(true)
+                                    .setAllowedOverMetered(true)
+                                    .setAllowedOverRoaming(true)
 
-                        val downloadManager =
-                            getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-                        val requestId = downloadManager.enqueue(request)
+                            val downloadManager =
+                                getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+                            val requestId = downloadManager.enqueue(request)
 
-                        Thread(Runnable {
-                            val sdf = SimpleDateFormat("yyyy/MM/dd hh:mm:ss")
-                            val currentDate = sdf.format(Date())
-                            val downloadUploadManager =
-                                DownloadUploadManager(
-                                    0,
-                                    requestId,
-                                    file.file_name,
-                                    0,
-                                    true,
-                                    currentDate
-                                )
-                            AppDatabase.getDatabase(this)
-                                .downloadUploadManagerDao().insert(downloadUploadManager)
-                        }).start()
+                            Thread(Runnable {
+                                val sdf = SimpleDateFormat("yyyy/MM/dd hh:mm:ss")
+                                val currentDate = sdf.format(Date())
+                                val downloadUploadManager =
+                                    DownloadUploadManager(
+                                        0,
+                                        requestId,
+                                        file.file_name,
+                                        0,
+                                        true,
+                                        currentDate,
+                                        file.file_code,
+                                        null
+                                    )
+                                AppDatabase.getDatabase(this)
+                                    .downloadUploadManagerDao().insert(downloadUploadManager)
+                            }).start()
+                        }
                     }
-                }
-                .setNegativeButton(
-                    R.string.dialog_cancel
-                ) { dialog, id ->
-                }
-                .create().show()
+                    .setNegativeButton(
+                        R.string.dialog_cancel
+                    ) { dialog, id ->
+                    }
+                    .create().show()
+            }
         }
     }
 
     private fun handleShowImage(image: UtbFile) {
-        val fileCode = image.file_code
-        if (fileCode != null) {
-            val files = ArrayList<String>()
-            files.add(Gson().toJson(image.getData()))
+        runOnUiThread {
+            val fileCode = image.file_code
+            if (fileCode != null) {
+                val files = ArrayList<String>()
+                files.add(Gson().toJson(image.getData()))
 
-            val intent = Intent(this, PictureShowActivity::class.java)
-            intent.putExtra("files", files)
-            startActivity(intent)
+                val intent = Intent(this, PictureShowActivity::class.java)
+                intent.putExtra("files", files)
+                startActivity(intent)
+            }
         }
     }
 
@@ -483,21 +502,32 @@ class MainActivity : AppCompatActivity() {
                     0,
                     0,
                     file.name,
-                    2,
+                    DownloadManager.STATUS_RUNNING,
                     false,
-                    currentDate
+                    currentDate,
+                    null,
+                    null
                 )
 
                 Thread(Runnable {
                     downloadManager.uid = AppDatabase.getDatabase(this).downloadUploadManagerDao()
                         .insert(downloadManager).toInt()
-                    this.uptobox?.uploadFile(file, {
-                        if (it) {
+                    this.uptobox?.uploadFile(file, { success, files ->
+                        if (success) {
                             builderNotification.setSubText("Upload complete")
-                            downloadManager.progress = 8
+                            downloadManager.progress = DownloadManager.STATUS_SUCCESSFUL
                         } else {
                             builderNotification.setSubText("Upload error")
-                            downloadManager.progress = 16
+                            downloadManager.progress = DownloadManager.STATUS_FAILED
+                        }
+
+                        if (files != null && files.length() > 0) {
+                            val fileResponse = JSONObject(files[0].toString())
+                            val urlFileResponse = Uri.parse(fileResponse.getString("url"))
+
+                            val segments = urlFileResponse.path?.split("/")
+                            val fileCode: String = segments?.get(segments.size - 1) ?: ""
+                            downloadManager.fileCode = fileCode
                         }
 
                         AppDatabase.getDatabase(this).downloadUploadManagerDao()
@@ -508,11 +538,15 @@ class MainActivity : AppCompatActivity() {
                         this.reloadCurrentPath()
                     }, { message ->
                         builderNotification.setSubText("Upload error")
-                        downloadManager.progress = 16
+                        downloadManager.progress = DownloadManager.STATUS_FAILED
 
                         builderNotification.setProgress(0, 0, false)
                         notificationManager.notify(2, builderNotification.build())
 
+                        AppDatabase.getDatabase(this).downloadUploadManagerDao()
+                            .insert(downloadManager)
+                    }, { tag ->
+                        downloadManager.tagUpload = tag
                         AppDatabase.getDatabase(this).downloadUploadManagerDao()
                             .insert(downloadManager)
                     })
@@ -773,7 +807,6 @@ class MainActivity : AppCompatActivity() {
                         if (it != null && it != "") {
                             ivPreview.visibility = View.VISIBLE
                             val picasso = Picasso.get()
-                            picasso.setIndicatorsEnabled(true)
                             picasso.load(it)
                                 .into(ivPreview)
                         } else {

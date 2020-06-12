@@ -24,6 +24,16 @@ class Uptobox(_token: String, _context: Context) {
         private const val URL_BASE_STREAM = "$SCHEMA://$HOST_STREAM"
         private const val URL_API_PATH = "api"
         private const val TAG = "UTB"
+
+        private var uptobox: Uptobox? = null
+
+        fun getInstance(token: String, context: Context): Uptobox? {
+            if (uptobox == null) {
+                uptobox = Uptobox(token, context)
+            }
+
+            return uptobox
+        }
     }
 
     private var token: String = _token
@@ -152,6 +162,7 @@ class Uptobox(_token: String, _context: Context) {
                         listener.invoke(it)
                     }
                 } else {
+                    utbCurrentFolder.sort()
                     listener.invoke(utbCurrentFolder)
                 }
             } else {
@@ -501,21 +512,27 @@ class Uptobox(_token: String, _context: Context) {
         }
     }
 
-    fun uploadFile(file: File, listener: (Boolean) -> Unit, error: (String?) -> Unit) {
+    fun uploadFile(
+        file: File,
+        listener: (Boolean, JSONArray?) -> Unit,
+        error: (String?) -> Unit,
+        tag: (String) -> Unit
+    ) {
         request.getRequest(
             "/upload", listOf("token" to this.token)
         ) {
             val url = it.data?.getString("uploadLink")
             if (url != null) {
                 request.postFile("$SCHEMA:$url", file, { response ->
-
                     val files = response.getJSONArray("files")
-                    listener.invoke(files.length() == 1)
+                    listener.invoke(files.length() == 1, files)
                 }, { message ->
                     error.invoke(message)
+                }, { randomTag ->
+                    tag.invoke(randomTag)
                 })
             } else {
-                listener.invoke(false)
+                listener.invoke(false, null)
             }
         }
     }
@@ -613,5 +630,9 @@ class Uptobox(_token: String, _context: Context) {
 
     fun setOnRequestListener(requestListener: RequestListener) {
         this.request.setOnRequestListener(requestListener)
+    }
+
+    fun cancel(tag: String) {
+        request.cancelRequest(tag)
     }
 }

@@ -18,9 +18,11 @@ import android.widget.ListView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.net.toUri
+import androidx.preference.PreferenceManager
 import info.matpif.myutbexplorer.adapters.ListItemDownloadUploadManager
 import info.matpif.myutbexplorer.entities.DownloadUploadManager
 import info.matpif.myutbexplorer.entities.databases.AppDatabase
+import info.matpif.myutbexplorer.services.Uptobox
 import java.io.File
 
 class DownloadUploadManager : AppCompatActivity() {
@@ -34,12 +36,20 @@ class DownloadUploadManager : AppCompatActivity() {
                 .show()
         }
     }
+    private var uptobox: Uptobox? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_download_upload_manager)
 
         lvDownloadUpload = findViewById(R.id.lvDownloadUpload)
+
+        val prefs = PreferenceManager.getDefaultSharedPreferences(this)
+        val token = prefs.getString("token", "")
+
+        if (token != null) {
+            this.uptobox = Uptobox.getInstance(token, this)
+        }
 
         lvDownloadUpload!!.onItemClickListener =
             AdapterView.OnItemClickListener { parent, view, position, id ->
@@ -58,25 +68,48 @@ class DownloadUploadManager : AppCompatActivity() {
                         builder.setPositiveButton(
                             R.string.dialog_yes
                         ) { dialog, id ->
-                            val downloadManager =
-                                getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-                            downloadManager.remove(selectedItem.idRequest)
+                            if (selectedItem.download == true) {
+                                val downloadManager =
+                                    getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+                                downloadManager.remove(selectedItem.idRequest)
+                            } else {
+                                if (selectedItem.tagUpload != null) {
+                                    this.uptobox?.cancel(selectedItem.tagUpload!!)
+                                    selectedItem.progress = 0
+                                    Thread(Runnable {
+                                        AppDatabase.getDatabase(this).downloadUploadManagerDao()
+                                            .insert(selectedItem)
+                                    }).start()
+                                }
+                            }
                         }
                         builder.setNegativeButton(
                             R.string.dialog_no
                         ) { dialog, id -> }
                         builder.create().show()
                     } else if (selectedItem.progress == DownloadManager.STATUS_SUCCESSFUL) {
-                        val targetFile =
-                            File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/${selectedItem.fileName}")
-                        if (targetFile.exists()) {
-                            val intent = Intent()
-                            val type = MimeTypeMap.getSingleton()
-                                .getMimeTypeFromExtension(targetFile.extension)
-                            intent.setDataAndType(Uri.fromFile(targetFile), type)
-                            startActivity(intent)
+                        if (selectedItem.download == true) {
+                            val targetFile =
+                                File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/${selectedItem.fileName}")
+                            if (targetFile.exists()) {
+                                val intent = Intent()
+                                val type = MimeTypeMap.getSingleton()
+                                    .getMimeTypeFromExtension(targetFile.extension)
+                                intent.setDataAndType(Uri.fromFile(targetFile), type)
+                                startActivity(intent)
+                            } else {
+                                Toast.makeText(this, "File not found", Toast.LENGTH_LONG).show()
+                            }
                         } else {
-                            Toast.makeText(this, "File not found", Toast.LENGTH_LONG).show()
+                            if (selectedItem.fileCode != null) {
+                                runOnUiThread {
+                                    val intent = Intent(this, MainActivity::class.java)
+                                    intent.putExtra("fileCode", selectedItem.fileCode)
+                                    startActivity(intent)
+                                }
+                            } else {
+                                Toast.makeText(this, "File not found", Toast.LENGTH_LONG).show()
+                            }
                         }
                     }
                 }
@@ -130,39 +163,44 @@ class DownloadUploadManager : AppCompatActivity() {
             val listOfDownloadManager =
                 AppDatabase.getDatabase(this).downloadUploadManagerDao().getAllOrderByIdDesc()
             if (listOfDownloadManager.isNotEmpty()) {
-                runOnUiThread {
-                    val downloadManager =
-                        this.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-                    val q = DownloadManager.Query()
-                    val c: Cursor = downloadManager.query(q)
+                val downloadManager =
+                    this.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+                val q = DownloadManager.Query()
+                val c: Cursor = downloadManager.query(q)
 
-                    listOfDownloadManager.forEach { item ->
-                        if (item.download == true) {
-                            item.progress = 0
-                            if (c.moveToFirst()) {
-                                do {
-                                    val id = c.getInt(c.getColumnIndex(DownloadManager.COLUMN_ID))
-                                    val status =
-                                        c.getInt(c.getColumnIndex(DownloadManager.COLUMN_STATUS))
-                                    if (id == item.idRequest.toInt()) {
-                                        item.progress = status
-                                    }
-                                } while (c.moveToNext())
-                            }
-                            Thread(Runnable {
-                                AppDatabase.getDatabase(this).downloadUploadManagerDao()
-                                    .insert(item)
-                            }).start()
+                listOfDownloadManager.forEach { item ->
+                    if (item.download == true) {
+                        item.progress = 0
+                        if (c.moveToFirst()) {
+                            do {
+                                val id = c.getInt(c.getColumnIndex(DownloadManager.COLUMN_ID))
+                                val status =
+                                    c.getInt(c.getColumnIndex(DownloadManager.COLUMN_STATUS))
+                                if (id == item.idRequest.toInt()) {
+                                    item.progress = status
+                                }
+                            } while (c.moveToNext())
                         }
+                        Thread(Runnable {
+                            AppDatabase.getDatabase(this).downloadUploadManagerDao()
+                                .insert(item)
+                        }).start()
                     }
+                }
 
-                    c.close()
+                c.close()
+            }
 
+            runOnUiThread {
+                if (this.adapter == null) {
                     this.adapter = ListItemDownloadUploadManager(
                         listOfDownloadManager.toCollection(ArrayList()), this
                     )
                     this.lvDownloadUpload?.adapter = adapter
-                    this.adapter!!.notifyDataSetChanged()
+                } else {
+                    this.adapter?.clear()
+                    this.adapter?.addAll(listOfDownloadManager)
+                    this.adapter?.notifyDataSetChanged()
                 }
             }
         }).start()

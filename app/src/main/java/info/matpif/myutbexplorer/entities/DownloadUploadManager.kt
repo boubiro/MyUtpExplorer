@@ -12,5 +12,7 @@ data class DownloadUploadManager(
     @ColumnInfo(name = "file_name") var fileName: String?,
     @ColumnInfo(name = "progress") var progress: Int?,
     @ColumnInfo(name = "download") var download: Boolean?,
-    @ColumnInfo(name = "create_at") var createAt: String?
+    @ColumnInfo(name = "create_at") var createAt: String?,
+    @ColumnInfo(name = "file_code") var fileCode: String?,
+    @ColumnInfo(name = "tag_upload") var tagUpload: String?
 )

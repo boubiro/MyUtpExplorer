@@ -17,6 +17,7 @@ import java.io.FileOutputStream
 import java.io.InputStream
 import java.io.OutputStream
 import java.net.URL
+import java.util.*
 
 
 class Request(
@@ -26,13 +27,13 @@ class Request(
 ) {
 
     private var requestListener: RequestListener? = null
+    private var client: OkHttpClient = OkHttpClient()
 
     fun getRequest(
         method: String,
         params: List<Pair<String, Any?>>,
         listener: (UtbResponse) -> Unit
     ) = Thread(Runnable {
-        val client = OkHttpClient()
         val url = HttpUrl.Builder()
             .scheme(schema)
             .host(host)
@@ -74,8 +75,6 @@ class Request(
         params: Data,
         listener: (UtbResponse) -> Unit
     ) = Thread(Runnable {
-
-        val client = OkHttpClient()
         val body = RequestBody.create(
             "application/json; charset=utf-8".toMediaTypeOrNull(),
             Gson().toJson(params)
@@ -121,8 +120,6 @@ class Request(
         params: Data,
         listener: (UtbResponse) -> Unit
     ) = Thread(Runnable {
-
-        val client = OkHttpClient()
         val body = RequestBody.create(
             "application/json; charset=utf-8".toMediaTypeOrNull(),
             Gson().toJson(params)
@@ -168,8 +165,6 @@ class Request(
         params: Data,
         listener: (UtbResponse) -> Unit
     ) = Thread(Runnable {
-
-        val client = OkHttpClient()
         val body = RequestBody.create(
             "application/json; charset=utf-8".toMediaTypeOrNull(),
             Gson().toJson(params)
@@ -214,10 +209,11 @@ class Request(
         urlUploadFile: String,
         file: File,
         listener: (JSONObject) -> Unit,
-        error: (String?) -> Unit
+        error: (String?) -> Unit,
+        tag: (String) -> Unit
     ) = Thread(Runnable {
-        val client = OkHttpClient()
         val url = URL(urlUploadFile)
+        val randomTag = UUID.randomUUID().toString().toUpperCase()
 
         val urlRequest = HttpUrl.Builder()
             .scheme(url.protocol)
@@ -246,7 +242,12 @@ class Request(
             .url(urlRequest.build())
             .addHeader("Accept", "*/*")
             .post(requestBody)
+            .tag(randomTag)
             .build()
+
+        Thread(Runnable {
+            tag.invoke(randomTag)
+        }).start()
         try {
             client.newCall(request).execute().use { response ->
                 val jsonResult = JSONObject(response.body?.string())
@@ -272,7 +273,6 @@ class Request(
         error: (message: String?) -> Unit,
         progress: (downloaded: Long, target: Long) -> Unit
     ) = Thread(Runnable {
-        val client = OkHttpClient()
         val url = URL(urlDownloadFile)
 
         val urlRequest = HttpUrl.Builder()
@@ -328,4 +328,12 @@ class Request(
             }
         }
     }).start()
+
+    fun cancelRequest(tag: String) {
+        client.dispatcher.queuedCalls().forEach { call ->
+            if (call.request().tag() == tag) {
+                call.cancel()
+            }
+        }
+    }
 }

@@ -11,7 +11,7 @@ import info.matpif.myutbexplorer.entities.UtbAttributes
 import info.matpif.myutbexplorer.entities.interfaces.DownloadUploadManagerDao
 import info.matpif.myutbexplorer.entities.interfaces.UtbAttributesDao
 
-@Database(version = 3, entities = [UtbAttributes::class, DownloadUploadManager::class])
+@Database(version = 5, entities = [UtbAttributes::class, DownloadUploadManager::class])
 abstract class AppDatabase : RoomDatabase() {
     abstract fun utbAttributeDao(): UtbAttributesDao
     abstract fun downloadUploadManagerDao(): DownloadUploadManagerDao
@@ -33,6 +33,18 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE `download_upload_manager` ADD COLUMN `file_code` TEXT")
+            }
+        }
+
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE `download_upload_manager` ADD COLUMN `tag_upload` TEXT")
+            }
+        }
+
         fun getDatabase(
             context: Context
         ): AppDatabase {
@@ -44,6 +56,8 @@ abstract class AppDatabase : RoomDatabase() {
                 )
                     .addMigrations(MIGRATION_1_2)
                     .addMigrations(MIGRATION_2_3)
+                    .addMigrations(MIGRATION_3_4)
+                    .addMigrations(MIGRATION_4_5)
                     .build()
                 INSTANCE = instance
                 instance

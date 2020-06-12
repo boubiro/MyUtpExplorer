@@ -8,4 +8,9 @@ class UtbCurrentFolder {
     var pageCount: Int = 1
     var totalFileCount: Int = 0
     var totalFileSize: Int = 0
+
+    fun sort() {
+        this.folders?.sort()
+        this.files?.sort()
+    }
 }

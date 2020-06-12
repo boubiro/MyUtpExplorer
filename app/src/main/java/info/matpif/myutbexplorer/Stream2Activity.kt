@@ -53,7 +53,7 @@ class Stream2Activity : AppCompatActivity() {
         val prefs = PreferenceManager.getDefaultSharedPreferences(this)
         val token = prefs.getString("token", "")
         if (token != null) {
-            this.uptobox = Uptobox(token, this)
+            this.uptobox = Uptobox.getInstance(token, this)
         }
 
         this.currentFile = UtbFile().pushData(

@@ -1,6 +1,6 @@
 package info.matpif.myutbexplorer.models
 
-class UtbFolder : UtbModel() {
+class UtbFolder : UtbModel(), Comparable<UtbFolder> {
 
     data class DataUtbFolder(
         var fileCount: Int? = null,
@@ -58,5 +58,19 @@ class UtbFolder : UtbModel() {
 
     override fun toString(): String {
         return "" + this.name
+    }
+
+    override fun compareTo(other: UtbFolder): Int {
+        return when {
+            other.fld_name == null -> {
+                1
+            }
+            this.fld_name == null -> {
+                -1
+            }
+            else -> {
+                this.fld_name!!.compareTo(other.fld_name!!)
+            }
+        }
     }
 }

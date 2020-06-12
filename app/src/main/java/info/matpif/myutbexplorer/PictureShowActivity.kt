@@ -24,7 +24,7 @@ class PictureShowActivity : AppCompatActivity() {
         val prefs = PreferenceManager.getDefaultSharedPreferences(this)
         val token = prefs.getString("token", "")
         if (token != null) {
-            this.uptobox = Uptobox(token, this)
+            this.uptobox = Uptobox.getInstance(token, this)
         }
         val ivPicture: ImageView? = this.findViewById(R.id.picture_holder)
         val tvImageName: TextView? = this.findViewById(R.id.tvImageName)

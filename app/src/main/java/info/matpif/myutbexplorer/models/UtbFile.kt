@@ -1,6 +1,6 @@
 package info.matpif.myutbexplorer.models
 
-class UtbFile : UtbModel() {
+class UtbFile : UtbModel(), Comparable<UtbFile> {
 
     data class DataUtbFile(
         var file_code: String? = null,
@@ -78,5 +78,19 @@ class UtbFile : UtbModel() {
 
     override fun toString(): String {
         return "" + this.file_name
+    }
+
+    override fun compareTo(other: UtbFile): Int {
+        return when {
+            other.file_name == null -> {
+                1
+            }
+            this.file_name == null -> {
+                -1
+            }
+            else -> {
+                this.file_name!!.compareTo(other.file_name!!)
+            }
+        }
     }
 }
