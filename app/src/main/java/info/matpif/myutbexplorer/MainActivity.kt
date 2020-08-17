@@ -22,7 +22,6 @@ import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.ShareCompat
-import androidx.core.view.marginBottom
 import androidx.preference.PreferenceManager
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.google.android.gms.cast.MediaInfo
@@ -40,10 +39,7 @@ import info.matpif.myutbexplorer.entities.databases.AppDatabase
 import info.matpif.myutbexplorer.helpers.FileUtils
 import info.matpif.myutbexplorer.helpers.MyHelper
 import info.matpif.myutbexplorer.listeners.MyFavoriteListener
-import info.matpif.myutbexplorer.models.UtbCurrentFolder
-import info.matpif.myutbexplorer.models.UtbFile
-import info.matpif.myutbexplorer.models.UtbFolder
-import info.matpif.myutbexplorer.models.UtbModel
+import info.matpif.myutbexplorer.models.*
 import info.matpif.myutbexplorer.services.RequestListener
 import info.matpif.myutbexplorer.services.Uptobox
 import org.json.JSONObject
@@ -51,9 +47,8 @@ import pl.droidsonroids.casty.Casty
 import pl.droidsonroids.casty.MediaData
 import java.io.File
 import java.text.SimpleDateFormat
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 import java.util.*
+import java.util.concurrent.TimeUnit
 import kotlin.collections.ArrayList
 
 
@@ -996,61 +991,138 @@ class MainActivity : AppCompatActivity() {
                             )
                             startActivity(intent)
                         } else {
-                            this.uptobox!!.getThumbUrl(file) { url ->
-                                this.runOnUiThread {
+                            Thread(Runnable {
+                                val currentFileAttribute: UtbAttributes? =
+                                    AppDatabase.getDatabase(this@MainActivity).utbAttributeDao()
+                                        .findByCode(file.file_code!!)
 
-                                    val mediaMetadata =
-                                        MediaMetadata(MediaData.MEDIA_TYPE_MOVIE)
+                                if (currentFileAttribute != null) {
+                                    val time = currentFileAttribute.time
+                                    if (time > 0) {
+                                        val titleTime = java.lang.String.format(
+                                            "%02d:%02d:%02d", TimeUnit.MILLISECONDS.toHours(time),
+                                            TimeUnit.MILLISECONDS.toMinutes(time) - TimeUnit.HOURS.toMinutes(
+                                                TimeUnit.MILLISECONDS.toHours(
+                                                    time
+                                                )
+                                            ),
+                                            TimeUnit.MILLISECONDS.toSeconds(time) - TimeUnit.MINUTES.toSeconds(
+                                                TimeUnit.MILLISECONDS.toMinutes(time)
+                                            )
+                                        )
+                                        this@MainActivity.runOnUiThread {
+                                            val builder = AlertDialog.Builder(this)
+                                            builder.setTitle(
+                                                getString(R.string.title_resume).replace(
+                                                    "X",
+                                                    titleTime,
+                                                    false
+                                                )
+                                            )
+                                            builder.setPositiveButton(
+                                                R.string.dialog_ok
+                                            ) { dialog, id ->
+                                                this.startCast(
+                                                    streamLink,
+                                                    currentStreamLinks,
+                                                    file,
+                                                    time
+                                                )
+                                            }
+                                                .setNegativeButton(
+                                                    R.string.dialog_cancel
+                                                ) { dialog, id ->
+                                                    this.startCast(
+                                                        streamLink,
+                                                        currentStreamLinks,
+                                                        file,
+                                                        0L
+                                                    )
+                                                }
 
-                                    if (!TextUtils.isEmpty(file.file_name)) mediaMetadata.putString(
-                                        MediaMetadata.KEY_TITLE,
-                                        file.file_name
-                                    )
-                                    if (!TextUtils.isEmpty(file.file_descr)) mediaMetadata.putString(
-                                        MediaMetadata.KEY_SUBTITLE,
-                                        file.file_descr
-                                    )
-
-                                    mediaMetadata.addImage(WebImage(Uri.parse(url)))
-
-                                    val tracks = ArrayList<MediaTrack>()
-
-                                    val prefs = PreferenceManager.getDefaultSharedPreferences(this)
-                                    val size =
-                                        prefs.getString("subtitle_style_size", "1f")!!.toFloat()
-                                    val textTrackStyle = TextTrackStyle()
-                                    textTrackStyle.fontScale = size
-
-                                    var j: Long = 1
-                                    currentStreamLinks.subtitles?.forEach { utbSubTitle ->
-                                        val subtitle =
-                                            MediaTrack.Builder(j, MediaTrack.TYPE_TEXT)
-                                                .setName(utbSubTitle.label)
-                                                .setSubtype(MediaTrack.SUBTYPE_SUBTITLES)
-                                                .setContentId(utbSubTitle.link)
-                                                .build()
-                                        tracks.add(subtitle)
-
-                                        j++
+                                            builder.create().show()
+                                        }
+                                    } else {
+                                        this.startCast(
+                                            streamLink,
+                                            currentStreamLinks,
+                                            file,
+                                            0L
+                                        )
                                     }
-
-                                    this.runOnUiThread {
-                                        val mediaInfo: MediaInfo =
-                                            MediaInfo.Builder(streamLink?.url)
-                                                .setStreamType(MediaData.STREAM_TYPE_BUFFERED)
-                                                .setContentType("videos/mp4")
-                                                .setMetadata(mediaMetadata)
-                                                .setStreamDuration(-1L)
-                                                .setMediaTracks(tracks)
-                                                .setTextTrackStyle(textTrackStyle)
-                                                .build()
-
-                                        casty?.player?.loadMediaAndPlay(mediaInfo, true, 0)
-                                    }
+                                } else {
+                                    this.startCast(
+                                        streamLink,
+                                        currentStreamLinks,
+                                        file,
+                                        0L
+                                    )
                                 }
-                            }
+                            }).start()
                         }
                     }
+                }
+            }
+        }
+    }
+
+    private fun startCast(
+        streamLink: UtbStreamLink?,
+        currentStreamLinks: UtbStreamLinks,
+        file: UtbFile,
+        time: Long
+    ) {
+
+        this.uptobox!!.getThumbUrl(file) { url ->
+            this.runOnUiThread {
+
+                val mediaMetadata =
+                    MediaMetadata(MediaData.MEDIA_TYPE_MOVIE)
+
+                if (!TextUtils.isEmpty(file.file_name)) mediaMetadata.putString(
+                    MediaMetadata.KEY_TITLE,
+                    file.file_name
+                )
+                if (!TextUtils.isEmpty(file.file_descr)) mediaMetadata.putString(
+                    MediaMetadata.KEY_SUBTITLE,
+                    file.file_descr
+                )
+
+                mediaMetadata.addImage(WebImage(Uri.parse(url)))
+
+                val tracks = ArrayList<MediaTrack>()
+
+                val prefs = PreferenceManager.getDefaultSharedPreferences(this)
+                val size =
+                    prefs.getString("subtitle_style_size", "1f")!!.toFloat()
+                val textTrackStyle = TextTrackStyle()
+                textTrackStyle.fontScale = size
+
+                var j: Long = 1
+                currentStreamLinks.subtitles?.forEach { utbSubTitle ->
+                    val subtitle =
+                        MediaTrack.Builder(j, MediaTrack.TYPE_TEXT)
+                            .setName(utbSubTitle.label)
+                            .setSubtype(MediaTrack.SUBTYPE_SUBTITLES)
+                            .setContentId(utbSubTitle.link)
+                            .build()
+                    tracks.add(subtitle)
+
+                    j++
+                }
+
+                this.runOnUiThread {
+                    val mediaInfo: MediaInfo =
+                        MediaInfo.Builder(streamLink?.url)
+                            .setStreamType(MediaData.STREAM_TYPE_BUFFERED)
+                            .setContentType("videos/mp4")
+                            .setMetadata(mediaMetadata)
+                            .setStreamDuration(-1L)
+                            .setMediaTracks(tracks)
+                            .setTextTrackStyle(textTrackStyle)
+                            .build()
+
+                    casty?.player?.loadMediaAndPlay(mediaInfo, true, time)
                 }
             }
         }

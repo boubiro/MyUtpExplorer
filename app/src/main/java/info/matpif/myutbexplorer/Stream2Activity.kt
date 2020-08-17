@@ -1,14 +1,11 @@
 package info.matpif.myutbexplorer
 
-import android.annotation.SuppressLint
 import android.app.AlertDialog
 import android.net.Uri
 import android.os.Bundle
 import android.view.KeyEvent
 import android.view.View
-import android.widget.EditText
 import android.widget.ImageButton
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.preference.PreferenceManager
 import com.google.android.exoplayer2.C
@@ -28,10 +25,8 @@ import com.google.android.exoplayer2.util.Util
 import com.google.gson.Gson
 import info.matpif.myutbexplorer.entities.UtbAttributes
 import info.matpif.myutbexplorer.entities.databases.AppDatabase
-import info.matpif.myutbexplorer.entities.interfaces.UtbAttributesDao
 import info.matpif.myutbexplorer.helpers.MyHelper
 import info.matpif.myutbexplorer.models.UtbFile
-import info.matpif.myutbexplorer.models.UtbFolder
 import info.matpif.myutbexplorer.models.UtbSubTitle
 import info.matpif.myutbexplorer.services.Uptobox
 import org.json.JSONArray
@@ -92,12 +87,29 @@ class Stream2Activity : AppCompatActivity() {
                     Gson().toJson(this@Stream2Activity.currentFile?.getData())
                 )
             } else {
-                var time = this@Stream2Activity.currentFileAttribute?.time!!
+                val time = this@Stream2Activity.currentFileAttribute?.time!!
                 if (time > 0) {
-                    val titleTime = (SimpleDateFormat("mm:ss")).format(Date(time));
+                    // >= 1 hour
+                    val titleTime = java.lang.String.format(
+                        "%02d:%02d:%02d", TimeUnit.MILLISECONDS.toHours(time),
+                        TimeUnit.MILLISECONDS.toMinutes(time) - TimeUnit.HOURS.toMinutes(
+                            TimeUnit.MILLISECONDS.toHours(
+                                time
+                            )
+                        ),
+                        TimeUnit.MILLISECONDS.toSeconds(time) - TimeUnit.MINUTES.toSeconds(
+                            TimeUnit.MILLISECONDS.toMinutes(time)
+                        )
+                    )
                     this@Stream2Activity.runOnUiThread {
                         val builder = AlertDialog.Builder(this)
-                        builder.setTitle("Resume playback : $titleTime")
+                        builder.setTitle(
+                            getString(R.string.title_resume).replace(
+                                "X",
+                                titleTime,
+                                false
+                            )
+                        )
                         builder.setPositiveButton(
                             R.string.dialog_ok
                         ) { dialog, id ->
@@ -194,7 +206,9 @@ class Stream2Activity : AppCompatActivity() {
         this.player?.prepare(mediaSource, false, false)
 
         this.timer?.schedule(timerTask {
-            if (this@Stream2Activity.currentFileAttribute != null) {
+            if (this@Stream2Activity.currentFileAttribute != null && this@Stream2Activity.player?.currentPosition!! > 0) {
+                this@Stream2Activity.currentFileAttribute?.time =
+                    this@Stream2Activity.player?.currentPosition!!
                 AppDatabase.getDatabase(this@Stream2Activity).utbAttributeDao()
                     .insert(this@Stream2Activity.currentFileAttribute!!)
             }

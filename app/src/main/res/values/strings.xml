@@ -45,6 +45,7 @@
     <string name="dialog_cancel">Cancel</string>
     <string name="title_stream_details">Details</string>
     <string name="element_selected">X élément(s) sélectionné(s)</string>
+    <string name="title_resume">Resume playback: X</string>
 
     <string name="dialog_yes">Yes</string>
     <string name="dialog_no">No</string>
