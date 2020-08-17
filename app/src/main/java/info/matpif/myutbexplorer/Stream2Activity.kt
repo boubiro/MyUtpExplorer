@@ -6,7 +6,9 @@ import android.net.Uri
 import android.os.Bundle
 import android.view.KeyEvent
 import android.view.View
+import android.widget.EditText
 import android.widget.ImageButton
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.preference.PreferenceManager
 import com.google.android.exoplayer2.C
@@ -24,12 +26,20 @@ import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
 import com.google.android.exoplayer2.util.MimeTypes
 import com.google.android.exoplayer2.util.Util
 import com.google.gson.Gson
+import info.matpif.myutbexplorer.entities.UtbAttributes
+import info.matpif.myutbexplorer.entities.databases.AppDatabase
+import info.matpif.myutbexplorer.entities.interfaces.UtbAttributesDao
 import info.matpif.myutbexplorer.helpers.MyHelper
 import info.matpif.myutbexplorer.models.UtbFile
+import info.matpif.myutbexplorer.models.UtbFolder
 import info.matpif.myutbexplorer.models.UtbSubTitle
 import info.matpif.myutbexplorer.services.Uptobox
 import org.json.JSONArray
 import pl.droidsonroids.casty.Casty
+import java.text.SimpleDateFormat
+import java.util.*
+import java.util.concurrent.TimeUnit
+import kotlin.concurrent.timerTask
 
 
 class Stream2Activity : AppCompatActivity() {
@@ -41,10 +51,12 @@ class Stream2Activity : AppCompatActivity() {
     private var playbackPosition: Long = 0
     private var uptobox: Uptobox? = null
     private var currentFile: UtbFile? = null
+    private var currentFileAttribute: UtbAttributes? = null
     private var currentSubtitles: Array<UtbSubTitle>? = null
     private var subtitleButton: ImageButton? = null
     private var controllerExoView: PlayerControlView? = null
     private var casty: Casty? = null
+    private var timer: Timer? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -55,6 +67,7 @@ class Stream2Activity : AppCompatActivity() {
         if (token != null) {
             this.uptobox = Uptobox.getInstance(token, this)
         }
+        this.timer = Timer()
 
         this.currentFile = UtbFile().pushData(
             Gson().fromJson(
@@ -62,6 +75,46 @@ class Stream2Activity : AppCompatActivity() {
                 UtbFile.DataUtbFile::class.java
             )
         )
+
+        Thread(Runnable {
+            this@Stream2Activity.currentFileAttribute =
+                AppDatabase.getDatabase(this@Stream2Activity).utbAttributeDao()
+                    .findByCode(this@Stream2Activity.currentFile?.file_code!!)
+
+            if (this@Stream2Activity.currentFileAttribute == null) {
+                this@Stream2Activity.currentFileAttribute = UtbAttributes(
+                    0,
+                    1,
+                    this@Stream2Activity.currentFile?.file_code,
+                    this@Stream2Activity.currentFile?.file_name,
+                    false,
+                    false,
+                    Gson().toJson(this@Stream2Activity.currentFile?.getData())
+                )
+            } else {
+                var time = this@Stream2Activity.currentFileAttribute?.time!!
+                if (time > 0) {
+                    val titleTime = (SimpleDateFormat("mm:ss")).format(Date(time));
+                    this@Stream2Activity.runOnUiThread {
+                        val builder = AlertDialog.Builder(this)
+                        builder.setTitle("Resume playback : $titleTime")
+                        builder.setPositiveButton(
+                            R.string.dialog_ok
+                        ) { dialog, id ->
+                            this@Stream2Activity.player?.seekTo(this@Stream2Activity.currentFileAttribute?.time!!)
+                            hideSystemUi()
+                        }
+                            .setNegativeButton(
+                                R.string.dialog_cancel
+                            ) { dialog, id ->
+                                hideSystemUi()
+                            }
+
+                        builder.create().show()
+                    }
+                }
+            }
+        }).start()
 
         val jsonSubtitle = JSONArray(intent.getStringExtra("subtitles"))
 
@@ -139,10 +192,17 @@ class Stream2Activity : AppCompatActivity() {
         this.player?.playWhenReady = playWhenReady
         this.player?.seekTo(currentWindow, playbackPosition)
         this.player?.prepare(mediaSource, false, false)
+
+        this.timer?.schedule(timerTask {
+            if (this@Stream2Activity.currentFileAttribute != null) {
+                AppDatabase.getDatabase(this@Stream2Activity).utbAttributeDao()
+                    .insert(this@Stream2Activity.currentFileAttribute!!)
+            }
+        }, 5000, 5000)
     }
 
     private fun selectSubtitle(utbSubtitle: UtbSubTitle?) {
-        hideSystemUi();
+        hideSystemUi()
         if (utbSubtitle != null) {
             val url: String? = intent.getStringExtra("url")
             val uri: Uri = Uri.parse(url)
@@ -213,6 +273,8 @@ class Stream2Activity : AppCompatActivity() {
             currentWindow = this.player?.currentWindowIndex!!
             this.player?.release()
             player = null
+            this.timer?.cancel()
+            this.timer?.purge()
         }
     }
 

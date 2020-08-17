@@ -12,5 +12,6 @@ data class UtbAttributes(
     @ColumnInfo(name = "name") var name: String?,
     @ColumnInfo(name = "is_favorite") var isFavorite: Boolean?,
     @ColumnInfo(name = "is_seen") var isSeen: Boolean?,
-    @ColumnInfo(name = "utb_model") var utbModel: String?
+    @ColumnInfo(name = "utb_model") var utbModel: String?,
+    @ColumnInfo(name = "time") var time: Long = 0
 )
