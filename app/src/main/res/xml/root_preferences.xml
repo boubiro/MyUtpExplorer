@@ -1,0 +1,22 @@
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <PreferenceCategory app:title="@string/messages_header_add_token">
+
+        <EditTextPreference
+            app:key="token"
+            app:title="@string/token_title"
+            app:useSimpleSummaryProvider="true" />
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="@string/messages_header_style">
+        <ListPreference
+            android:defaultValue="1"
+            android:entries="@array/pref_subtitle_size_labels"
+            android:entryValues="@array/pref_subtitle_size_values"
+            android:key="subtitle_style_size"
+            android:title="@string/size_title"
+            android:summary="@string/size_summary" />
+    </PreferenceCategory>
+
+</PreferenceScreen>
