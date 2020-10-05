@@ -589,7 +589,7 @@ class MainActivity : AppCompatActivity() {
             this.progressBar!!.visibility = View.VISIBLE
         }
 
-        if (path != null) {
+        if (path != null && this.uptobox != null) {
             this.uptobox!!.getFiles(path) {
                 if (it != null) {
                     val listFolder = it.folders!!.toCollection(ArrayList())
@@ -731,6 +731,10 @@ class MainActivity : AppCompatActivity() {
                         this.progressBar!!.visibility = View.INVISIBLE
                     }
                 }
+            }
+        } else {
+            this.runOnUiThread {
+                this.progressBar!!.visibility = View.INVISIBLE
             }
         }
     }
