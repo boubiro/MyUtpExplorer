@@ -166,21 +166,19 @@ class Stream2Activity : AppCompatActivity() {
                     i++
                 }
 
-                runOnUiThread {
-                    val builder = AlertDialog.Builder(this)
-                    builder.setTitle("Choose")
-                        .setItems(
-                            labels
-                        ) { dialog, which ->
-                            if (which == 0) {
-                                this.selectSubtitle(null)
-                            } else {
-                                this.selectSubtitle(this.currentSubtitles!![which - 1])
-                            }
+                val builder = AlertDialog.Builder(this)
+                builder.setTitle("Choose")
+                    .setItems(
+                        labels
+                    ) { dialog, which ->
+                        if (which == 0) {
+                            this.selectSubtitle(null)
+                        } else {
+                            this.selectSubtitle(this.currentSubtitles!![which - 1])
                         }
-                        .setCancelable(false)
-                    builder.create().show()
-                }
+                    }
+                    .setCancelable(false)
+                builder.create().show()
             }
         }
 
@@ -206,11 +204,15 @@ class Stream2Activity : AppCompatActivity() {
         this.player?.prepare(mediaSource, false, false)
 
         this.timer?.schedule(timerTask {
-            if (this@Stream2Activity.currentFileAttribute != null && this@Stream2Activity.player?.currentPosition!! > 0) {
-                this@Stream2Activity.currentFileAttribute?.time =
-                    this@Stream2Activity.player?.currentPosition!!
-                AppDatabase.getDatabase(this@Stream2Activity).utbAttributeDao()
-                    .insert(this@Stream2Activity.currentFileAttribute!!)
+            this@Stream2Activity.runOnUiThread {
+                if (this@Stream2Activity.currentFileAttribute != null && this@Stream2Activity.player != null && this@Stream2Activity.player?.currentPosition!! > 0) {
+                    this@Stream2Activity.currentFileAttribute?.time =
+                        this@Stream2Activity.player?.currentPosition!!
+                    Thread(Runnable {
+                        AppDatabase.getDatabase(this@Stream2Activity).utbAttributeDao()
+                            .insert(this@Stream2Activity.currentFileAttribute!!)
+                    }).start()
+                }
             }
         }, 5000, 5000)
     }
@@ -240,13 +242,15 @@ class Stream2Activity : AppCompatActivity() {
                 this.player?.prepare(mediaSource, false, false)
             }
         } else {
-            this.playerView?.subtitleView?.visibility = View.GONE
+            runOnUiThread {
+                this.playerView?.subtitleView?.visibility = View.GONE
+            }
         }
     }
 
     private fun buildMediaSource(uri: Uri): MediaSource {
         val dataSourceFactory: DataSource.Factory =
-            DefaultDataSourceFactory(this, "exoplayer-codelab")
+            DefaultDataSourceFactory(this, "myutbexplorer-exoplayer")
         return ProgressiveMediaSource.Factory(dataSourceFactory)
             .createMediaSource(uri)
     }

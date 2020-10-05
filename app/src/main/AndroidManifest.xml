@@ -29,7 +29,8 @@
         android:requestLegacyExternalStorage="true"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/AppTheme">
+        android:theme="@style/AppTheme"
+        android:banner="@drawable/ic_tv">
         <activity
             android:name=".DownloadUploadManager"
             android:label="@string/title_activity_download_upload_manager"
@@ -59,7 +60,6 @@
             android:logo="@drawable/ic_tv">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
         </activity>
