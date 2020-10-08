@@ -5,7 +5,7 @@ Application permettant d'accéder à son compte Uptobox
 [![](youtube-logo.png)](http://www.youtube.com/watch?v=RhNpWWYnTbc)
 
 # Téléchargement
-[![](google-play-android.jpg)](https://play.google.com/store/apps/details?id=info.matpif.myutbexplorer&hl=fr)
+[![](google-play-android.png)](https://play.google.com/store/apps/details?id=info.matpif.myutbexplorer&hl=fr)
 
 # Description
 Application non officielle permettant :
