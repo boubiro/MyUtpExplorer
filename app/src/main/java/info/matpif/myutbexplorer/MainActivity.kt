@@ -14,6 +14,7 @@ import android.os.Bundle
 import android.os.Environment
 import android.text.TextUtils
 import android.view.*
+import android.webkit.MimeTypeMap
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.collection.ArrayMap
@@ -379,16 +380,17 @@ class MainActivity : AppCompatActivity() {
                         R.string.dialog_ok
                     ) { dialog, id ->
 
-                        val targetFile =
-                            File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/${file.file_name}")
                         this.uptobox?.getDirectDownloadLink(file.file_code!!) { url ->
+                            val extension: String = MimeTypeMap.getFileExtensionFromUrl(url)
+                            val mineType: String?
+                            mineType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
                             val request: DownloadManager.Request =
                                 DownloadManager.Request(Uri.parse(url))
                                     .setTitle(file.file_name)
                                     .setDescription("Downloading")
+                                    .setMimeType(mineType)
                                     .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                                    .setDestinationUri(Uri.fromFile(targetFile))
-//                                .setRequiresCharging(false) // Set if charging is required to begin the download (API 24 MIN)
+                                    .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, file.file_name)
                                     .setAllowedOverMetered(true)
                                     .setAllowedOverRoaming(true)
 

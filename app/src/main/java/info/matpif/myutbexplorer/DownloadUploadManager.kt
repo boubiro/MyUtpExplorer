@@ -2,28 +2,23 @@ package info.matpif.myutbexplorer
 
 import android.app.AlertDialog
 import android.app.DownloadManager
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
+import android.content.*
 import android.database.Cursor
 import android.net.Uri
 import android.os.Bundle
-import android.os.Environment
 import android.view.Menu
 import android.view.MenuItem
-import android.webkit.MimeTypeMap
 import android.widget.AdapterView
 import android.widget.ListView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.net.toUri
 import androidx.preference.PreferenceManager
 import info.matpif.myutbexplorer.adapters.ListItemDownloadUploadManager
 import info.matpif.myutbexplorer.entities.DownloadUploadManager
 import info.matpif.myutbexplorer.entities.databases.AppDatabase
 import info.matpif.myutbexplorer.services.Uptobox
 import java.io.File
+
 
 class DownloadUploadManager : AppCompatActivity() {
 
@@ -89,17 +84,7 @@ class DownloadUploadManager : AppCompatActivity() {
                         builder.create().show()
                     } else if (selectedItem.progress == DownloadManager.STATUS_SUCCESSFUL) {
                         if (selectedItem.download == true) {
-                            val targetFile =
-                                File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath + "/${selectedItem.fileName}")
-                            if (targetFile.exists()) {
-                                val intent = Intent()
-                                val type = MimeTypeMap.getSingleton()
-                                    .getMimeTypeFromExtension(targetFile.extension)
-                                intent.setDataAndType(Uri.fromFile(targetFile), type)
-                                startActivity(intent)
-                            } else {
-                                Toast.makeText(this, "File not found", Toast.LENGTH_LONG).show()
-                            }
+                            this.openDownloadedAttachment(this, selectedItem.idRequest)
                         } else {
                             if (selectedItem.fileCode != null) {
                                 runOnUiThread {
@@ -116,6 +101,31 @@ class DownloadUploadManager : AppCompatActivity() {
             }
         this.loadAdapter()
         registerReceiver(onDownloadComplete, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE))
+    }
+
+    private fun openDownloadedAttachment(
+        context: Context,
+        downloadId: Long
+    ) {
+        val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+        val query = DownloadManager.Query()
+        query.setFilterById(downloadId)
+        val cursor = downloadManager.query(query)
+        if (cursor.moveToFirst()) {
+            val downloadStatus = cursor.getInt(cursor.getColumnIndex(DownloadManager.COLUMN_STATUS))
+            val downloadLocalUri = cursor.getString(cursor.getColumnIndex(DownloadManager.COLUMN_LOCAL_URI))
+            val downloadMimeType = cursor.getString(cursor.getColumnIndex(DownloadManager.COLUMN_MEDIA_TYPE))
+            if (downloadStatus == DownloadManager.STATUS_SUCCESSFUL && downloadLocalUri != null) {
+                val intent = Intent(Intent.ACTION_VIEW)
+                val attachmentUri = Uri.parse(downloadLocalUri)
+                val file = File(attachmentUri.getPath())
+
+                intent.setDataAndType(Uri.parse(file.absolutePath), downloadMimeType)
+                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                startActivity(intent)
+            }
+        }
+        cursor.close()
     }
 
     override fun onDestroy() {
