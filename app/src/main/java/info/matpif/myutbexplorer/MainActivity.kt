@@ -972,28 +972,42 @@ class MainActivity : AppCompatActivity() {
                 val nbVal: Int? = currentStreamLinks.streamLinks?.size
 
                 if (nbVal != null) {
-                    val labels: Array<String>? = Array(nbVal) { "" }
+                    val labels: Array<String> = Array(nbVal) { "" }
                     var i = 0
                     val streamLinks = currentStreamLinks.streamLinks
                     streamLinks?.forEach { utbStreamLink ->
-                        labels?.set(
-                            i,
-                            "${utbStreamLink.resolution} - ${utbStreamLink.language}"
-                        )
+                        labels[i] = "${utbStreamLink.resolution} - ${utbStreamLink.language}"
                         i++
                     }
 
                     this.createDialogChoose(labels) { index ->
                         val streamLink = streamLinks?.get(index)
                         if (casty == null || !casty?.isConnected!!) {
-                            val intent = Intent(this, Stream2Activity::class.java)
-                            intent.putExtra("url", streamLink?.url)
-                            intent.putExtra("file", Gson().toJson(file.getData()))
-                            intent.putExtra(
-                                "subtitles",
-                                Gson().toJson(currentStreamLinks.subtitles)
-                            )
-                            startActivity(intent)
+
+                            val players: Array<String> = Array(2) { "" }
+                            players[0] = "Internal video player"
+                            players[1] = "External video player"
+
+                            this.createDialogChoose(players) { i ->
+                                when (i) {
+                                    0 -> {
+                                        val intent = Intent(this, Stream2Activity::class.java)
+                                        intent.putExtra("url", streamLink?.url)
+                                        intent.putExtra("file", Gson().toJson(file.getData()))
+                                        intent.putExtra(
+                                            "subtitles",
+                                            Gson().toJson(currentStreamLinks.subtitles)
+                                        )
+                                        startActivity(intent)
+                                    }
+                                    1 -> {
+                                        val intent = Intent(Intent.ACTION_VIEW)
+                                        intent.setDataAndType(Uri.parse(streamLink?.url), "video/*");
+                                        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                                        startActivity(Intent.createChooser(intent, "Choose an External Player"))
+                                    }
+                                }
+                            }
                         } else {
                             Thread(Runnable {
                                 val currentFileAttribute: UtbAttributes? =

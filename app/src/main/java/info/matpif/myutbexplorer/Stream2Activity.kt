@@ -291,6 +291,9 @@ class Stream2Activity : AppCompatActivity() {
             currentWindow = this.player?.currentWindowIndex!!
             this.player?.release()
             player = null
+        }
+
+        if (this.timer != null) {
             this.timer?.cancel()
             this.timer?.purge()
         }
