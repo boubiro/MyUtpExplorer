@@ -320,38 +320,43 @@ class Uptobox(_token: String, _context: Context) {
             "/streaming", listOf("token" to this.token, "file_code" to file_code)
         ) { utbResponse ->
             val utbStreamLinks = UtbStreamLinks()
+            utbStreamLinks.subtitles = Array(0) { UtbSubTitle() }
+
             var count = 0
-            val streamLinks = JSONObject(utbResponse.data?.getString("streamLinks"))
-            val subtitles = JSONArray(utbResponse.data?.getString("subs"))
-            var keys = streamLinks.keys()
             var host = ""
+            var streamLinks = JSONObject()
 
-            utbStreamLinks.assetId = utbResponse.data?.getString("assetId")
-            utbStreamLinks.duration = utbResponse.data?.getInt("duration")
+            if (utbResponse.statusCode == 0) {
+                streamLinks = JSONObject(utbResponse.data?.getString("streamLinks"))
+                val subtitles = JSONArray(utbResponse.data?.getString("subs"))
+                val keys = streamLinks.keys()
 
-            while (keys.hasNext()) {
-                val key = keys.next()
-                val languages = JSONObject(streamLinks.getString(key))
+                utbStreamLinks.assetId = utbResponse.data?.getString("assetId")
+                utbStreamLinks.duration = utbResponse.data?.getInt("duration")
 
-                val keysLanguage = languages.keys()
-                while (keysLanguage.hasNext()) {
-                    val keyLanguage = keysLanguage.next()
-                    val url = languages.getString(keyLanguage)
-                    count++
+                while (keys.hasNext()) {
+                    val key = keys.next()
+                    val languages = JSONObject(streamLinks.getString(key))
+
+                    val keysLanguage = languages.keys()
+                    while (keysLanguage.hasNext()) {
+                        keysLanguage.next()
+                        count++
+                    }
                 }
-            }
 
-            utbStreamLinks.subtitles = Array(subtitles.length()) { UtbSubTitle() }
-            for (i in 0 until subtitles.length()) {
-                val item = subtitles.getJSONObject(i)
+                utbStreamLinks.subtitles = Array(subtitles.length()) { UtbSubTitle() }
+                for (i in 0 until subtitles.length()) {
+                    val item = subtitles.getJSONObject(i)
 
-                val utbSub = UtbSubTitle()
-                utbSub.type = item.getString("type")
-                utbSub.link = item.getString("src")
-                utbSub.src = item.getString("src")
-                utbSub.label = item.getString("label")
-                utbSub.srcLang = item.getString("srcLang")
-                utbStreamLinks.subtitles!![i] = utbSub
+                    val utbSub = UtbSubTitle()
+                    utbSub.type = item.getString("type")
+                    utbSub.link = item.getString("src")
+                    utbSub.src = item.getString("src")
+                    utbSub.label = item.getString("label")
+                    utbSub.srcLang = item.getString("srcLang")
+                    utbStreamLinks.subtitles!![i] = utbSub
+                }
             }
 
             this.getDirectDownloadLink(file_code) {
@@ -361,7 +366,6 @@ class Uptobox(_token: String, _context: Context) {
                 }
                 utbStreamLinks.streamLinks = Array(count) { UtbStreamLink() }
 
-                keys = streamLinks.keys()
                 count = 0
 
                 if (it != null) {
@@ -376,25 +380,29 @@ class Uptobox(_token: String, _context: Context) {
                     count++
                 }
 
-                while (keys.hasNext()) {
-                    val key = keys.next()
-                    val languages = JSONObject(streamLinks.getString(key))
+                if (utbResponse.statusCode == 0) {
 
-                    val keysLanguage = languages.keys()
-                    while (keysLanguage.hasNext()) {
-                        val keyLanguage = keysLanguage.next()
-                        val url = languages.getString(keyLanguage)
-                        val utbStreamLink = UtbStreamLink()
-                        utbStreamLink.language = keyLanguage
-                        utbStreamLink.resolution = key
-                        utbStreamLink.url = url
+                    val keys = streamLinks.keys()
+                    while (keys.hasNext()) {
+                        val key = keys.next()
+                        val languages = JSONObject(streamLinks.getString(key))
 
-                        if (count == 1) {
-                            host = URL(url).host
+                        val keysLanguage = languages.keys()
+                        while (keysLanguage.hasNext()) {
+                            val keyLanguage = keysLanguage.next()
+                            val url = languages.getString(keyLanguage)
+                            val utbStreamLink = UtbStreamLink()
+                            utbStreamLink.language = keyLanguage
+                            utbStreamLink.resolution = key
+                            utbStreamLink.url = url
+
+                            if (count == 1) {
+                                host = URL(url).host
+                            }
+
+                            utbStreamLinks.streamLinks!![count] = utbStreamLink
+                            count++
                         }
-
-                        utbStreamLinks.streamLinks!![count] = utbStreamLink
-                        count++
                     }
                 }
 
