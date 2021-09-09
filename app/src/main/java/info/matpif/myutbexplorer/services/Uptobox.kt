@@ -327,21 +327,26 @@ class Uptobox(_token: String, _context: Context) {
             var streamLinks = JSONObject()
 
             if (utbResponse.statusCode == 0) {
-                streamLinks = JSONObject(utbResponse.data?.getString("streamLinks"))
-                val subtitles = JSONArray(utbResponse.data?.getString("subs"))
-                val keys = streamLinks.keys()
 
                 utbStreamLinks.assetId = utbResponse.data?.getString("assetId")
                 utbStreamLinks.duration = utbResponse.data?.getInt("duration")
+                utbStreamLinks.version = utbResponse.data?.getString("version")
 
-                while (keys.hasNext()) {
-                    val key = keys.next()
-                    val languages = JSONObject(streamLinks.getString(key))
+                streamLinks = JSONObject(utbResponse.data?.getString("streamLinks"))
+                val subtitles = JSONArray(utbResponse.data?.getString("subs"))
 
-                    val keysLanguage = languages.keys()
-                    while (keysLanguage.hasNext()) {
-                        keysLanguage.next()
-                        count++
+                if (utbStreamLinks.version.equals(UtbStreamLinks.VERSION_1)) {
+                    val keys = streamLinks.keys()
+
+                    while (keys.hasNext()) {
+                        val key = keys.next()
+                        val languages = JSONObject(streamLinks.getString(key))
+
+                        val keysLanguage = languages.keys()
+                        while (keysLanguage.hasNext()) {
+                            keysLanguage.next()
+                            count++
+                        }
                     }
                 }
 
@@ -361,6 +366,10 @@ class Uptobox(_token: String, _context: Context) {
 
             this.getDirectDownloadLink(file_code) {
 
+
+                if (utbStreamLinks.version.equals(UtbStreamLinks.VERSION_2)) {
+                    count = 1
+                }
                 if (it != null) {
                     count++
                 }
@@ -381,28 +390,36 @@ class Uptobox(_token: String, _context: Context) {
                 }
 
                 if (utbResponse.statusCode == 0) {
+                    if (utbStreamLinks.version.equals(UtbStreamLinks.VERSION_1)) {
+                        val keys = streamLinks.keys()
+                        while (keys.hasNext()) {
+                            val key = keys.next()
+                            val languages = JSONObject(streamLinks.getString(key))
 
-                    val keys = streamLinks.keys()
-                    while (keys.hasNext()) {
-                        val key = keys.next()
-                        val languages = JSONObject(streamLinks.getString(key))
+                            val keysLanguage = languages.keys()
+                            while (keysLanguage.hasNext()) {
+                                val keyLanguage = keysLanguage.next()
+                                val url = languages.getString(keyLanguage)
+                                val utbStreamLink = UtbStreamLink()
+                                utbStreamLink.language = keyLanguage
+                                utbStreamLink.resolution = key
+                                utbStreamLink.url = url
 
-                        val keysLanguage = languages.keys()
-                        while (keysLanguage.hasNext()) {
-                            val keyLanguage = keysLanguage.next()
-                            val url = languages.getString(keyLanguage)
-                            val utbStreamLink = UtbStreamLink()
-                            utbStreamLink.language = keyLanguage
-                            utbStreamLink.resolution = key
-                            utbStreamLink.url = url
+                                if (count == 1) {
+                                    host = URL(url).host
+                                }
 
-                            if (count == 1) {
-                                host = URL(url).host
+                                utbStreamLinks.streamLinks!![count] = utbStreamLink
+                                count++
                             }
-
-                            utbStreamLinks.streamLinks!![count] = utbStreamLink
-                            count++
                         }
+                    } else if (utbStreamLinks.version.equals(UtbStreamLinks.VERSION_2)) {
+                        val utbStreamLink = UtbStreamLink()
+                        utbStreamLink.language = "link"
+                        utbStreamLink.resolution = "streaming"
+                        utbStreamLink.url = streamLinks.getString("src")
+
+                        utbStreamLinks.streamLinks!![count] = utbStreamLink
                     }
                 }
 

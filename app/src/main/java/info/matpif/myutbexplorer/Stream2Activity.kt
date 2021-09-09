@@ -11,15 +11,14 @@ import androidx.preference.PreferenceManager
 import com.google.android.exoplayer2.C
 import com.google.android.exoplayer2.Format
 import com.google.android.exoplayer2.SimpleExoPlayer
-import com.google.android.exoplayer2.source.MediaSource
-import com.google.android.exoplayer2.source.MergingMediaSource
-import com.google.android.exoplayer2.source.ProgressiveMediaSource
-import com.google.android.exoplayer2.source.SingleSampleMediaSource
+import com.google.android.exoplayer2.source.*
+import com.google.android.exoplayer2.source.hls.HlsMediaSource
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
 import com.google.android.exoplayer2.ui.PlayerControlView
 import com.google.android.exoplayer2.ui.PlayerView
 import com.google.android.exoplayer2.upstream.DataSource
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
+import com.google.android.exoplayer2.upstream.DefaultHttpDataSourceFactory
 import com.google.android.exoplayer2.util.MimeTypes
 import com.google.android.exoplayer2.util.Util
 import com.google.gson.Gson
@@ -249,10 +248,17 @@ class Stream2Activity : AppCompatActivity() {
     }
 
     private fun buildMediaSource(uri: Uri): MediaSource {
-        val dataSourceFactory: DataSource.Factory =
-            DefaultDataSourceFactory(this, "myutbexplorer-exoplayer")
-        return ProgressiveMediaSource.Factory(dataSourceFactory)
-            .createMediaSource(uri)
+
+        val userAgent = "myutbexplorer-exoplayer"
+        return if (uri.lastPathSegment!!.contains("mp3") || uri.lastPathSegment!!.contains("mp4")) {
+            val dataSourceFactory: DataSource.Factory =
+                DefaultDataSourceFactory(this, userAgent)
+            ProgressiveMediaSource.Factory(dataSourceFactory)
+                .createMediaSource(uri)
+        } else {
+            HlsMediaSource.Factory(DefaultHttpDataSourceFactory(userAgent))
+                .createMediaSource(uri)
+        }
     }
 
     override fun onStart() {
