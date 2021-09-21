@@ -2,7 +2,6 @@ package info.matpif.myutbexplorer.services
 
 import android.content.Context
 import android.os.Environment
-import android.os.Handler
 import info.matpif.myutbexplorer.entities.databases.AppDatabase
 import info.matpif.myutbexplorer.models.*
 import info.matpif.myutbexplorer.services.data.*
@@ -359,7 +358,12 @@ class Uptobox(_token: String, _context: Context) {
                     utbSub.link = item.getString("src")
                     utbSub.src = item.getString("src")
                     utbSub.label = item.getString("label")
-                    utbSub.srcLang = item.getString("srcLang")
+
+                    if (utbStreamLinks.version.equals(UtbStreamLinks.VERSION_2)) {
+                        utbSub.srcLang = item.getString("srclang")
+                    } else {
+                        utbSub.srcLang = item.getString("srcLang")
+                    }
                     utbStreamLinks.subtitles!![i] = utbSub
                 }
             }

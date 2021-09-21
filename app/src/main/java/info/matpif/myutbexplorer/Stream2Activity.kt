@@ -250,7 +250,7 @@ class Stream2Activity : AppCompatActivity() {
     private fun buildMediaSource(uri: Uri): MediaSource {
 
         val userAgent = "myutbexplorer-exoplayer"
-        return if (uri.lastPathSegment!!.contains("mp3") || uri.lastPathSegment!!.contains("mp4")) {
+        return if (!uri.lastPathSegment!!.contains("m3u8")) {
             val dataSourceFactory: DataSource.Factory =
                 DefaultDataSourceFactory(this, userAgent)
             ProgressiveMediaSource.Factory(dataSourceFactory)
