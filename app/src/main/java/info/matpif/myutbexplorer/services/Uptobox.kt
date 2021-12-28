@@ -421,7 +421,9 @@ class Uptobox(_token: String, _context: Context) {
                         val utbStreamLink = UtbStreamLink()
                         utbStreamLink.language = "link"
                         utbStreamLink.resolution = "streaming"
-                        utbStreamLink.url = streamLinks.getString("src")
+                        utbStreamLink.url = streamLinks.getString("src") //baseLink
+                        val baseLink = URL(streamLinks.getString("baseLink"))
+                        host = baseLink.host
 
                         utbStreamLinks.streamLinks!![count] = utbStreamLink
                     }
@@ -635,7 +637,7 @@ class Uptobox(_token: String, _context: Context) {
             videoFile.file_code?.let { fileCode ->
                 this.getListAvailableFile(fileCode) { utbStreamLinks ->
                     val url =
-                        "$SCHEMA://" + utbStreamLinks.host + "/thumbnail/" + utbStreamLinks.assetId + "_preview.jpg"
+                        "$SCHEMA://" + utbStreamLinks.host + "/stream/images/" + utbStreamLinks.assetId + "/_i_preview_0.jpg"
                     listener.invoke(url)
                 }
             }
