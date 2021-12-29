@@ -53,15 +53,13 @@
             android:tint="@drawable/touch_selector"
             android:tintMode="src_in" />
 
-        <ImageButton
+        <Button
             android:id="@id/exo_next"
             style="@style/ExoMediaButton.Next"
-            android:tint="@drawable/touch_selector"
             android:tintMode="src_in" />
 
 
     </LinearLayout>
-
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -97,6 +95,14 @@
             android:textColor="@color/exoFocusColor"
             android:textSize="14sp"
             android:textStyle="bold" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
 
         <ImageButton
             android:id="@id/exo_subtitles"
@@ -104,6 +110,20 @@
             android:tint="@drawable/touch_selector"
             android:tintMode="src_in" />
 
+        <ImageButton
+            android:id="@id/exo_languages"
+            style="@style/ExoMediaButton.Language"
+            android:tint="@drawable/touch_selector"
+            android:tintMode="src_in" />
+
+        <Button
+            android:id="@+id/exo_quality"
+            style="@style/Widget.AppCompat.Button.Borderless"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="0"
+            android:textAllCaps="false"
+            android:textColor="@color/exoFocusColor" />
     </LinearLayout>
 
 </LinearLayout>

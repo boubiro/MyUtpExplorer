@@ -384,8 +384,9 @@ class Uptobox(_token: String, _context: Context) {
                 if (it != null) {
 
                     val utbStreamLink = UtbStreamLink()
-                    utbStreamLink.language = "link"
-                    utbStreamLink.resolution = "direct"
+                    utbStreamLink.label = "Direct link"
+                    utbStreamLink.language = ""
+                    utbStreamLink.resolution = ""
                     utbStreamLink.url = it
 
                     utbStreamLinks.streamLinks!![count] = utbStreamLink
@@ -419,9 +420,12 @@ class Uptobox(_token: String, _context: Context) {
                         }
                     } else if (utbStreamLinks.version.equals(UtbStreamLinks.VERSION_2)) {
                         val utbStreamLink = UtbStreamLink()
-                        utbStreamLink.language = "link"
-                        utbStreamLink.resolution = "streaming"
-                        utbStreamLink.url = streamLinks.getString("src") //baseLink
+                        utbStreamLink.label = "Streaming"
+                        utbStreamLink.language = ""
+                        utbStreamLink.resolution = ""
+                        utbStreamLink.url = streamLinks.getString("src")
+                        utbStreamLink.urlMpd = streamLinks.getString("baseLink") + "/stream/" + streamLinks.getString("videoId") + "/_m_main_0.mpd"
+                        utbStreamLink.videoId = streamLinks.getString("videoId")
                         val baseLink = URL(streamLinks.getString("baseLink"))
                         host = baseLink.host
 

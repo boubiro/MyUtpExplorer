@@ -978,7 +978,7 @@ class MainActivity : AppCompatActivity() {
                     var i = 0
                     val streamLinks = currentStreamLinks.streamLinks
                     streamLinks?.forEach { utbStreamLink ->
-                        labels[i] = "${utbStreamLink.resolution} - ${utbStreamLink.language}"
+                        labels[i] = "${utbStreamLink.label}"
                         i++
                     }
 
@@ -994,7 +994,7 @@ class MainActivity : AppCompatActivity() {
                                 when (i) {
                                     0 -> {
                                         val intent = Intent(this, Stream2Activity::class.java)
-                                        intent.putExtra("url", streamLink?.url)
+                                        intent.putExtra("url", streamLink?.urlMpd)
                                         intent.putExtra("file", Gson().toJson(file.getData()))
                                         intent.putExtra(
                                             "subtitles",
