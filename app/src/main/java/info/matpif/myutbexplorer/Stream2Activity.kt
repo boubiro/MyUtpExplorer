@@ -22,7 +22,6 @@ import com.google.android.exoplayer2.ui.PlayerControlView
 import com.google.android.exoplayer2.ui.PlayerView
 import com.google.android.exoplayer2.ui.TrackSelectionDialogBuilder
 import com.google.android.exoplayer2.upstream.DataSource
-import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
 import com.google.android.exoplayer2.upstream.DefaultHttpDataSource
 import com.google.android.exoplayer2.util.MimeTypes
 import com.google.android.exoplayer2.util.Util
@@ -190,45 +189,48 @@ class Stream2Activity : AppCompatActivity() {
                                 ?.setPreferredAudioLanguage(
                                     this.listLanguage[which]
                                 )!!.build()
+
+                        this.hideSystemUi()
                     }
                     .setCancelable(false)
                 builder.create().show()
             }
         }
 
-        this.subtitleButton?.setOnClickListener {
-            if (this.currentSubtitles != null) {
-                val labels: Array<String>? = Array(this.currentSubtitles!!.size + 1) { "" }
-                var i = 0
-                labels?.set(
-                    i,
-                    "No subtitles"
-                )
-                i++
-
-                this.currentSubtitles!!.forEach { utbSubtitle ->
-                    labels?.set(
-                        i,
-                        "${utbSubtitle.label}"
-                    )
-                    i++
-                }
-
-                val builder = AlertDialog.Builder(this)
-                builder.setTitle("Choose")
-                    .setItems(
-                        labels
-                    ) { dialog, which ->
-                        if (which == 0) {
-//                            this.selectSubtitle(null)
-                        } else {
-//                            this.selectSubtitle(this.currentSubtitles!![which - 1])
-                        }
-                    }
-                    .setCancelable(false)
-                builder.create().show()
-            }
-        }
+//        this.subtitleButton?.setOnClickListener {
+//            if (this.currentSubtitles != null) {
+//                val labels: Array<String>? = Array(this.currentSubtitles!!.size + 1) { "" }
+//                var i = 0
+//                labels?.set(
+//                    i,
+//                    "No subtitles"
+//                )
+//                i++
+//
+//                this.currentSubtitles!!.forEach { utbSubtitle ->
+//                    labels?.set(
+//                        i,
+//                        "${utbSubtitle.label}"
+//                    )
+//                    i++
+//                }
+//
+//                val builder = AlertDialog.Builder(this)
+//                builder.setTitle("Choose")
+//                    .setItems(
+//                        labels
+//                    ) { dialog, which ->
+//                        this.player?.trackSelectionParameters =
+//                            this.player?.trackSelectionParameters?.buildUpon()
+//                                ?.setPreferredTextLanguage(
+//                                    "fre"
+//                                )!!.build()
+//                        this.playerView?.subtitleView?.visibility = View.VISIBLE
+//                    }
+//                    .setCancelable(false)
+//                builder.create().show()
+//            }
+//        }
 
 
         val myHelper = MyHelper(this)
@@ -247,22 +249,24 @@ class Stream2Activity : AppCompatActivity() {
             override fun onPlayerStateChanged(playWhenReady: Boolean, playbackState: Int) {
 
                 this@Stream2Activity.listLanguage = ArrayList<String>()
-                for (i in 0 until this@Stream2Activity.player!!.currentTracksInfo.trackGroupInfos.size) {
-                    val format =
-                        this@Stream2Activity.player!!.currentTracksInfo.trackGroupInfos[i].trackGroup.getFormat(
-                            0
-                        ).sampleMimeType
-                    val lang =
-                        this@Stream2Activity.player!!.currentTracksInfo.trackGroupInfos[i].trackGroup.getFormat(
-                            0
-                        ).language
-                    val id =
-                        this@Stream2Activity.player!!.currentTracksInfo.trackGroupInfos[i].trackGroup.getFormat(
-                            0
-                        ).id
+                if (this@Stream2Activity.listLanguage.size == 0) {
+                    for (i in 0 until this@Stream2Activity.player!!.currentTracksInfo.trackGroupInfos.size) {
+                        val format =
+                            this@Stream2Activity.player!!.currentTracksInfo.trackGroupInfos[i].trackGroup.getFormat(
+                                0
+                            ).sampleMimeType
+                        val lang =
+                            this@Stream2Activity.player!!.currentTracksInfo.trackGroupInfos[i].trackGroup.getFormat(
+                                0
+                            ).language
+                        val id =
+                            this@Stream2Activity.player!!.currentTracksInfo.trackGroupInfos[i].trackGroup.getFormat(
+                                0
+                            ).id
 
-                    if (format!!.contains("audio") && id != null && lang != null) {
-                        this@Stream2Activity.listLanguage.add(lang)
+                        if (format!!.contains("audio") && id != null && lang != null) {
+                            this@Stream2Activity.listLanguage.add(lang)
+                        }
                     }
                 }
             }
@@ -276,8 +280,8 @@ class Stream2Activity : AppCompatActivity() {
                 this@Stream2Activity.qualityButton!!.text = videoTextSize
             }
         })
+
         this.playerView?.player = player
-        this.playerView?.subtitleView?.visibility = View.VISIBLE
 
         val url: String? = intent.getStringExtra("url")
         val uri: Uri = Uri.parse(url)
@@ -327,16 +331,14 @@ class Stream2Activity : AppCompatActivity() {
             videoRenderer,
             TrackSelectionDialogBuilder.DialogCallback { isDisabled, overrides ->
                 this@Stream2Activity.autoQuality = overrides.isEmpty()
-                trackSelector!!.setParameters(
-                    TrackSelectionUtil.updateParametersWithOverride(
-                        this@Stream2Activity.trackSelector!!.parameters,
-                        videoRenderer,
-                        this@Stream2Activity.trackSelector!!.currentMappedTrackInfo!!.getTrackGroups(
-                            videoRenderer
-                        ),
-                        isDisabled,
-                        if (overrides.isEmpty()) null else overrides[0]
-                    )
+                trackSelector!!.parameters = TrackSelectionUtil.updateParametersWithOverride(
+                    this@Stream2Activity.trackSelector!!.parameters,
+                    videoRenderer,
+                    this@Stream2Activity.trackSelector!!.currentMappedTrackInfo!!.getTrackGroups(
+                        videoRenderer
+                    ),
+                    isDisabled,
+                    if (overrides.isEmpty()) null else overrides[0]
                 )
             }
         )
@@ -345,6 +347,9 @@ class Stream2Activity : AppCompatActivity() {
         }
 
         trackDialog = trackSelectionDialogBuilder.build()
+        trackDialog!!.setOnDismissListener {
+            this@Stream2Activity.hideSystemUi()
+        }
     }
 
     private fun isVideoRenderer(
@@ -366,10 +371,12 @@ class Stream2Activity : AppCompatActivity() {
         utbSubTitle.forEach { it ->
             val subtitle: MediaItem.SubtitleConfiguration =
                 MediaItem.SubtitleConfiguration.Builder(Uri.parse(it.src))
-                    .setMimeType(MimeTypes.APPLICATION_SUBRIP)
+                    .setMimeType(MimeTypes.TEXT_VTT)
                     .setLanguage(it.srcLang)
+                    .setLabel(it.label)
+                    .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
+                    .setRoleFlags(C.ROLE_FLAG_SUBTITLE)
                     .build()
-
             listSubtitle.add(subtitle)
         }
 
@@ -390,37 +397,6 @@ class Stream2Activity : AppCompatActivity() {
             else -> throw IllegalStateException("Unsupported type: $type")
         }
     }
-
-//    private fun selectSubtitle(utbSubtitle: UtbSubTitle?) {
-//        hideSystemUi()
-//        if (utbSubtitle != null) {
-//            val url: String? = intent.getStringExtra("url")
-//            val uri: Uri = Uri.parse(url)
-//            var mediaSource = buildMediaSource(uri)
-//            val dataSourceFactory = DefaultDataSourceFactory(
-//                this,
-//                Util.getUserAgent(this, "MyUtbExplorer")
-//            )
-//
-//            val subtitleFormat: Format = Format.createTextSampleFormat(
-//                utbSubtitle.label,
-//                MimeTypes.TEXT_VTT,
-//                Format.NO_VALUE,
-//                null
-//            );
-//            val subtitleSource = SingleSampleMediaSource.Factory(dataSourceFactory)
-//                .createMediaSource(Uri.parse(utbSubtitle.link), subtitleFormat, C.TIME_UNSET);
-//
-//            mediaSource = MergingMediaSource(mediaSource, subtitleSource)
-//            runOnUiThread {
-//                this.player?.prepare(mediaSource, false, false)
-//            }
-//        } else {
-//            runOnUiThread {
-//                this.playerView?.subtitleView?.visibility = View.GONE
-//            }
-//        }
-//    }
 
     override fun onStart() {
         super.onStart()
